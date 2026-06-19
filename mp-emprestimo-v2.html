@@ -227,10 +227,11 @@
 <div id="app">
   <header>
     <div class="header-logo">💰</div>
-    <div>
+    <div style="flex:1">
       <h1>MP Empréstimo</h1>
       <span>Gestão de empréstimos</span>
     </div>
+    <button onclick="load()" style="background:none;border:none;color:var(--green);font-size:20px;cursor:pointer;padding:4px 8px">🔄</button>
   </header>
 
   <div class="dashboard">
@@ -973,7 +974,10 @@ function load(){
         const cliente = clientes.find(c=>c.id===emp.clienteId);
         const pagsEmp = pagamentos.filter(p=>p.empId===emp.id);
         const totalPagoEmp = pagsEmp.reduce((a,b)=>a+b.valor,0);
-        const lucroEmp = Math.max(0, totalPagoEmp - emp.valor);
+        // Exclui valores que foram transferidos de outro empréstimo
+        const totalTransferido = pagsEmp.filter(p=>p.transferido).reduce((a,b)=>a+b.valor,0);
+        const pagoReal = totalPagoEmp - totalTransferido;
+        const lucroEmp = Math.max(0, pagoReal - emp.valor);
         return `
         <div class="quit-card">
           <div class="quit-header">
@@ -982,7 +986,7 @@ function load(){
           </div>
           <div class="quit-grid">
             <div class="quit-stat"><div class="s-label">Principal</div><div class="s-val">${fmt(emp.valor)}</div></div>
-            <div class="quit-stat"><div class="s-label">Total pago</div><div class="s-val">${fmt(totalPagoEmp)}</div></div>
+            <div class="quit-stat"><div class="s-label">Total pago</div><div class="s-val">${fmt(pagoReal)}</div></div>
             <div class="quit-stat"><div class="s-label">Lucro</div><div class="s-val" style="color:var(--green)">${fmt(lucroEmp)}</div></div>
           </div>
           <div class="quit-actions">
