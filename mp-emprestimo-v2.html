@@ -871,7 +871,8 @@ function checkClienteView(){
   if(!encoded) return false;
 
   try {
-    const data = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+    const decoded = decodeURIComponent(Array.prototype.map.call(atob(encoded), c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+    const data = JSON.parse(decoded);
 
     document.getElementById("login").style.display = "none";
     document.getElementById("app").style.display = "none";
