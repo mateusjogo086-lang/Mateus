@@ -169,6 +169,28 @@
 
   .empty { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
   .empty .icon { font-size:36px; margin-bottom:10px; }
+  /* CLIENTE VIEW */
+  #clienteView { display:none; min-height:100vh; background:var(--bg); padding:20px 16px; max-width:480px; margin:0 auto; }
+  .cv-header { text-align:center; margin-bottom:24px; padding-top:20px; }
+  .cv-logo { width:56px; height:56px; background:var(--green-dim); border:1px solid var(--green-glow); border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:26px; margin:0 auto 12px; }
+  .cv-title { font-size:18px; font-weight:700; margin-bottom:4px; }
+  .cv-sub { font-size:13px; color:var(--muted); }
+  .cv-main { background:linear-gradient(135deg,#0d2b1f 0%,#0b1a2e 100%); border:1px solid var(--green-glow); border-radius:var(--radius); padding:20px; margin-bottom:12px; }
+  .cv-main .dm-label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--green); margin-bottom:4px; }
+  .cv-main .dm-value { font-size:30px; font-weight:700; color:#fff; margin-bottom:4px; }
+  .cv-main .dm-sub { font-size:12px; color:var(--muted); }
+  .cv-main .dm-sub span { color:var(--green); font-weight:600; }
+  .cv-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .cv-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; }
+  .cv-card .dc-label { font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:4px; }
+  .cv-card .dc-value { font-size:16px; font-weight:700; }
+  .cv-card .dc-value.green { color:var(--green); }
+  .cv-pags { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:12px; }
+  .cv-pags h3 { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:12px; }
+  .cv-pag-item { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; }
+  .cv-pag-item:last-child { border-bottom:none; }
+  .cv-footer { text-align:center; font-size:11px; color:var(--muted); margin-top:24px; }
+
   .hidden { display:none !important; }
 
   /* QUITADO */
@@ -424,6 +446,7 @@ function entrarApp(){
 
 // Verifica se já está logado
 window.addEventListener("DOMContentLoaded",()=>{
+  if(checkClienteView()) return;
   if(localStorage.getItem("mpLogado")==="1"){
     entrarApp();
   }
@@ -673,6 +696,104 @@ function statusVencimento(venc){
 
 function fmt(n){ return "R$ "+Number(n).toFixed(2).replace('.',','); }
 
+// ── COMPARTILHAR ──
+function compartilhar(empId){
+  const url = window.location.href.split('?')[0] + '?emp=' + empId;
+  if(navigator.share){
+    navigator.share({ title:'Meu Empréstimo', url });
+  } else {
+    navigator.clipboard.writeText(url).then(()=>alert('Link copiado!'));
+  }
+}
+
+// ── CLIENTE VIEW ──
+function checkClienteView(){
+  const params = new URLSearchParams(window.location.search);
+  const empId = Number(params.get('emp'));
+  if(!empId) return false;
+
+  document.getElementById("login").style.display = "none";
+  document.getElementById("app").style.display = "none";
+  document.getElementById("clienteView").style.display = "block";
+
+  // Precisa carregar o DB para mostrar os dados
+  let req = indexedDB.open("mpemprestimo",1);
+  req.onsuccess = e => {
+    db = e.target.result;
+    const t1 = db.transaction("clientes","readonly");
+    const t2 = db.transaction("emprestimos","readonly");
+    const t3 = db.transaction("pagamentos","readonly");
+
+    let cls=[], emps=[], pags=[];
+
+    t1.objectStore("clientes").getAll().onsuccess = ev=>{ cls = ev.target.result; };
+    t3.objectStore("pagamentos").getAll().onsuccess = ev=>{ pags = ev.target.result; };
+    t2.objectStore("emprestimos").getAll().onsuccess = ev=>{
+      emps = ev.target.result;
+      const emp = emps.find(e=>e.id===empId);
+      if(!emp){ document.getElementById("cv-content").innerHTML='<p style="color:var(--muted);text-align:center">Empréstimo não encontrado.</p>'; return; }
+
+      const cliente = cls.find(c=>c.id===emp.clienteId);
+      const jurosDia = emp.taxa ? (emp.valor*(emp.taxa/100))/30 : 0;
+      const d = Math.floor((new Date()-new Date(emp.data))/(1000*60*60*24));
+      const totalBruto = emp.valor + (jurosDia*d);
+      const totalPago = pags.filter(p=>p.empId===empId).reduce((a,b)=>a+b.valor,0);
+      const saldo = totalBruto - totalPago;
+      const amanha = saldo + jurosDia;
+
+      document.getElementById("cv-nome").innerText = cliente?.nome || 'Cliente';
+
+      const pagsEmp = pags.filter(p=>p.empId===empId);
+      const histHTML = pagsEmp.length ? pagsEmp.map(p=>`
+        <div class="cv-pag-item">
+          <span>📅 ${p.data||'—'}</span>
+          <span style="color:var(--green);font-weight:600">+${fmt(p.valor)}</span>
+        </div>`).join('') : '<p style="color:var(--muted);font-size:13px">Nenhum pagamento registrado.</p>';
+
+      const sv = emp.vencimento ? (()=>{
+        const hoje=new Date(); hoje.setHours(0,0,0,0);
+        const v=new Date(emp.vencimento); v.setHours(0,0,0,0);
+        const diff=Math.round((v-hoje)/(1000*60*60*24));
+        if(diff<0) return `<div class="venc-badge venc-over">Vencido há ${Math.abs(diff)} dias</div>`;
+        if(diff===0) return `<div class="venc-badge venc-hoje">Vence hoje!</div>`;
+        if(diff<=5) return `<div class="venc-badge venc-soon">Vence em ${diff} dias</div>`;
+        return `<div class="venc-badge venc-ok">Vence em ${diff} dias</div>`;
+      })() : '';
+
+      document.getElementById("cv-content").innerHTML = `
+        ${sv}
+        <div class="cv-main">
+          <div class="dm-label">Saldo atual</div>
+          <div class="dm-value">${fmt(saldo)}</div>
+          <div class="dm-sub">Amanhã: <span>${fmt(amanha)}</span></div>
+        </div>
+        <div class="cv-grid">
+          <div class="cv-card">
+            <div class="dc-label">Principal</div>
+            <div class="dc-value">${fmt(emp.valor)}</div>
+          </div>
+          <div class="cv-card">
+            <div class="dc-label">Total pago</div>
+            <div class="dc-value green">${fmt(totalPago)}</div>
+          </div>
+          <div class="cv-card">
+            <div class="dc-label">Taxa</div>
+            <div class="dc-value">${emp.taxa||0}%/mês</div>
+          </div>
+          <div class="cv-card">
+            <div class="dc-label">Por dia</div>
+            <div class="dc-value green">${fmt(jurosDia)}</div>
+          </div>
+        </div>
+        <div class="cv-pags">
+          <h3>Histórico de pagamentos</h3>
+          ${histHTML}
+        </div>`;
+    };
+  };
+  return true;
+}
+
 // ── LOAD ──
 function load(){
   const t1=db.transaction("clientes","readonly");
@@ -774,7 +895,10 @@ function load(){
       <div class="emp-card">
         <div class="emp-header">
           <div class="emp-name">${cliente?.nome||'Sem nome'}</div>
-          <div class="emp-days">${dias(emp.data)} dias</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <div class="emp-days">${dias(emp.data)} dias</div>
+            <button class="btn btn-sm btn-ghost" style="padding:3px 8px;font-size:13px" onclick="compartilhar(${emp.id})">🔗</button>
+          </div>
         </div>
         ${vencBadge}
         <div class="valor-dia-box">
@@ -842,5 +966,16 @@ function load(){
   };
 }
 </script>
+<!-- CLIENTE VIEW (link compartilhável) -->
+<div id="clienteView">
+  <div class="cv-header">
+    <div class="cv-logo">💰</div>
+    <div class="cv-title">MP Empréstimo</div>
+    <div class="cv-sub" id="cv-nome"></div>
+  </div>
+  <div id="cv-content"></div>
+  <div class="cv-footer">Gerado por MP Empréstimo</div>
+</div>
+
 </body>
 </html>
