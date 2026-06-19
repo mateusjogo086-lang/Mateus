@@ -778,9 +778,14 @@ function apagarCliente(id){
 // ── FECHAR MODAL ──
 function fecharModal(id){
   document.getElementById(id).classList.remove("open");
-  // Só zera tudo se não for o detalhe (que abre outro modal logo depois)
-  if(id === 'modalPagDetalhe') {
+  if(id === 'modalPagDetalhe'){
+    // Não zera editPagId nem delPagId pois outro modal vai abrir
     pagDetalheId = null;
+    return;
+  }
+  if(id === 'modalEditPag' || id === 'modalDelPag'){
+    editPagId = null;
+    delPagId  = null;
     return;
   }
   pagandoId=null; editandoId=null; apagandoId=null;
