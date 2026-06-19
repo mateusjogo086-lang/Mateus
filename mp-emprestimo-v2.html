@@ -685,7 +685,7 @@ function load(){
       clientes.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
     const lc = document.getElementById("listaClientes");
     lc.innerHTML = clientes.length
-      ? clientes.map(c=>`<div class="pag-item" style="cursor:default"><span>${c.nome}</span></div>`).join('')
+      ? clientes.map(c=>`<div class="pag-item" style="cursor:default"><span>${c.nome}</span><button class="btn btn-sm btn-danger" onclick="apagarCliente(${c.id})">🗑️</button></div>`).join('')
       : '<div class="empty"><div class="icon">👤</div>Nenhum cliente cadastrado</div>';
   };
 
