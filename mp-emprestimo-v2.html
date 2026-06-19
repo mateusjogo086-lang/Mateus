@@ -547,47 +547,48 @@ function calcSaldo(emp, todosPags){
 
 function processarPagamento(empId, valorPago, data, todosPags){
   const emp = emprestimos.find(e=>e.id===empId);
-  if(!emp) { load(); return; }
+  if(!emp){ load(); return; }
 
   const saldo = calcSaldo(emp, todosPags);
 
-  // Se saldo zerou ou ficou negativo
   if(saldo <= 0){
     const sobrou = Math.abs(saldo);
 
     // Quita este empréstimo
     let t2 = db.transaction("emprestimos","readwrite");
-    t2.objectStore("emprestimos").put({...emp, quitado:true, dataQuitado: data});
-    t2.oncomplete = ()=>{
-      // Recarrega empréstimos para pegar estado atualizado
-      let t3 = db.transaction("emprestimos","readonly");
-      t3.objectStore("emprestimos").getAll().onsuccess = ev=>{
-        emprestimos = ev.target.result;
+    t2.objectStore("emprestimos").put({...emp, quitado:true, dataQuitado:data});
+    t2.oncomplete = () => {
+      // Recarrega pagamentos primeiro
+      let rPag = db.transaction("pagamentos","readonly");
+      rPag.objectStore("pagamentos").getAll().onsuccess = evP => {
+        pagamentos = evP.target.result;
+        // Recarrega emprestimos
+        let rEmp = db.transaction("emprestimos","readonly");
+        rEmp.objectStore("emprestimos").getAll().onsuccess = evE => {
+          emprestimos = evE.target.result;
 
-        if(sobrou < 0.01){ load(); return; }
+          if(sobrou < 0.01){ load(); return; }
 
-        // Busca outros empréstimos ativos do mesmo cliente, mais antigo primeiro
-        const outrosAtivos = emprestimos
-          .filter(e => e.clienteId===emp.clienteId && e.id!==empId && !e.quitado)
-          .sort((a,b) => new Date(a.data) - new Date(b.data));
+          const outrosAtivos = emprestimos
+            .filter(e => e.clienteId===emp.clienteId && e.id!==empId && !e.quitado)
+            .sort((a,b) => new Date(a.data) - new Date(b.data));
 
-        if(!outrosAtivos.length){
-          // Sem outros empréstimos — avisa e devolve
-          load();
-          setTimeout(()=>alert('💰 Sobrou R$ ' + sobrou.toFixed(2).replace('.',',') + ' — devolver ao cliente!'), 300);
-          return;
-        }
+          if(!outrosAtivos.length){
+            load();
+            setTimeout(()=>alert('💰 Sobrou R$ '+sobrou.toFixed(2).replace('.',',')+' — devolver ao cliente!'), 300);
+            return;
+          }
 
-        // Abate no empréstimo mais antigo
-        const proximo = outrosAtivos[0];
-        let txp = db.transaction("pagamentos","readwrite");
-        txp.objectStore("pagamentos").add({empId: proximo.id, valor: sobrou, data});
-        txp.oncomplete = ()=>{
-          // Atualiza lista de pagamentos e processa recursivamente
-          let t4 = db.transaction("pagamentos","readonly");
-          t4.objectStore("pagamentos").getAll().onsuccess = ev2=>{
-            pagamentos = ev2.target.result;
-            processarPagamento(proximo.id, sobrou, data, pagamentos);
+          // Abate no próximo mais antigo
+          const proximo = outrosAtivos[0];
+          let txp = db.transaction("pagamentos","readwrite");
+          txp.objectStore("pagamentos").add({empId:proximo.id, valor:sobrou, data, transferido:true, origemId:empId});
+          txp.oncomplete = () => {
+            let rp2 = db.transaction("pagamentos","readonly");
+            rp2.objectStore("pagamentos").getAll().onsuccess = ev3 => {
+              pagamentos = ev3.target.result;
+              processarPagamento(proximo.id, sobrou, data, pagamentos);
+            };
           };
         };
       };
@@ -632,9 +633,11 @@ function abrirDelPag(){
 }
 function confirmarDelPag(){
   if(!delPagId) return;
+  const id = delPagId;
+  fecharModal('modalDelPag');
   let tx = db.transaction("pagamentos","readwrite");
-  tx.objectStore("pagamentos").delete(delPagId);
-  tx.oncomplete = ()=>{ fecharModal('modalDelPag'); load(); };
+  tx.objectStore("pagamentos").delete(id);
+  tx.oncomplete = ()=>{ load(); };
 }
 
 // ── OBSERVAÇÃO ──
@@ -704,6 +707,7 @@ function confirmarDel(){
 function quitar(id){
   const emp = emprestimos.find(e=>e.id===id);
   if(!emp) return;
+  if(!confirm('Marcar como quitado?')) return;
   let tx = db.transaction("emprestimos","readwrite");
   tx.objectStore("emprestimos").put({...emp, quitado:true, dataQuitado: new Date().toISOString().slice(0,10)});
   tx.oncomplete = ()=>{ load(); };
@@ -937,12 +941,12 @@ function load(){
         <div style="margin-bottom:12px">
           <div class="pag-section-title">Pagamentos recebidos</div>
           ${pagsEmp.map(p=>`
-            <div class="pag-item" onclick="abrirPagDetalhe(${p.id})">
+            <div class="pag-item" ${p.transferido ? '' : `onclick="abrirPagDetalhe(${p.id})"`} style="${p.transferido ? 'cursor:default;opacity:.8' : ''}">
               <div>
-                <div class="pag-val">+${fmt(p.valor)}</div>
-                <div class="pag-data">📅 ${p.data||'—'}</div>
+                <div class="pag-val">${p.transferido ? '🔄' : ''} +${fmt(p.valor)}</div>
+                <div class="pag-data">📅 ${p.data||'—'}${p.transferido ? ' • transferido' : ''}</div>
               </div>
-              <span class="pag-arrow">›</span>
+              ${p.transferido ? '' : '<span class="pag-arrow">›</span>'}
             </div>
           `).join('')}
         </div>` : '';
