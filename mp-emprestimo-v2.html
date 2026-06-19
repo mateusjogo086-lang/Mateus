@@ -398,6 +398,17 @@
   </div>
 </div>
 
+<!-- MODAL: SOBRA DE SALDO -->
+<div class="modal-overlay" id="modalSobra">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>💰 Sobrou saldo!</h3>
+    <p class="sub" id="sobraMsg"></p>
+    <div id="sobraLista"></div>
+    <button class="btn btn-ghost" style="margin-top:8px" onclick="fecharModal('modalSobra')">Não abater</button>
+  </div>
+</div>
+
 <!-- MODAL: APAGAR EMPRÉSTIMO -->
 <div class="modal-overlay" id="modalDel">
   <div class="modal">
@@ -419,6 +430,8 @@ let emprestimos = [];
 let pagamentos  = [];
 
 let pagandoId   = null;
+let sobraValor  = 0;
+let sobraData   = '';
 let editandoId  = null;
 let apagandoId  = null;
 let obsEmpId    = null;
@@ -530,17 +543,27 @@ function confirmarPag(){
   const data  = document.getElementById("dataPag").value;
   if(!valor||!pagandoId) return;
   const empId = pagandoId;
+  fecharModal('modalPag');
   let tx = db.transaction("pagamentos","readwrite");
   tx.objectStore("pagamentos").add({empId,valor,data});
   tx.oncomplete = ()=>{
-    fecharModal('modalPag');
-    processarPagamento(empId, valor, data, [...pagamentos, {empId,valor,data}]);
+    // Recarrega pagamentos frescos do DB antes de calcular
+    let rp = db.transaction("pagamentos","readonly");
+    rp.objectStore("pagamentos").getAll().onsuccess = ev=>{
+      pagamentos = ev.target.result;
+      // Recarrega emprestimos também
+      let re = db.transaction("emprestimos","readonly");
+      re.objectStore("emprestimos").getAll().onsuccess = ev2=>{
+        emprestimos = ev2.target.result;
+        processarPagamento(empId, valor, data, pagamentos);
+      };
+    };
   };
 }
 
 function calcSaldo(emp, todosPags){
-  const jurosDia = emp.taxa ? (emp.valor*(emp.taxa/100))/30 : 0;
-  const totalBruto = emp.valor + (jurosDia*dias(emp.data));
+  const d = dias(emp.data);
+  const totalBruto = emp.valor * (1 + (emp.taxa ? (emp.taxa/100) : 0) * d / 30);
   const totalPago = todosPags.filter(p=>p.empId===emp.id).reduce((a,b)=>a+b.valor,0);
   return totalBruto - totalPago;
 }
@@ -558,44 +581,65 @@ function processarPagamento(empId, valorPago, data, todosPags){
     let t2 = db.transaction("emprestimos","readwrite");
     t2.objectStore("emprestimos").put({...emp, quitado:true, dataQuitado:data});
     t2.oncomplete = () => {
-      // Recarrega pagamentos primeiro
+      // Recarrega tudo
       let rPag = db.transaction("pagamentos","readonly");
       rPag.objectStore("pagamentos").getAll().onsuccess = evP => {
         pagamentos = evP.target.result;
-        // Recarrega emprestimos
         let rEmp = db.transaction("emprestimos","readonly");
         rEmp.objectStore("emprestimos").getAll().onsuccess = evE => {
           emprestimos = evE.target.result;
+          load();
 
-          if(sobrou < 0.01){ load(); return; }
+          if(sobrou < 0.01) return;
 
+          // Busca outros empréstimos ativos do mesmo cliente
           const outrosAtivos = emprestimos
             .filter(e => e.clienteId===emp.clienteId && e.id!==empId && !e.quitado)
             .sort((a,b) => new Date(a.data) - new Date(b.data));
 
           if(!outrosAtivos.length){
-            load();
             setTimeout(()=>alert('💰 Sobrou R$ '+sobrou.toFixed(2).replace('.',',')+' — devolver ao cliente!'), 300);
             return;
           }
 
-          // Abate no próximo mais antigo
-          const proximo = outrosAtivos[0];
-          let txp = db.transaction("pagamentos","readwrite");
-          txp.objectStore("pagamentos").add({empId:proximo.id, valor:sobrou, data, transferido:true, origemId:empId});
-          txp.oncomplete = () => {
-            let rp2 = db.transaction("pagamentos","readonly");
-            rp2.objectStore("pagamentos").getAll().onsuccess = ev3 => {
-              pagamentos = ev3.target.result;
-              processarPagamento(proximo.id, sobrou, data, pagamentos);
-            };
-          };
+          // Mostra modal para escolher onde abater
+          sobraValor = sobrou;
+          sobraData  = data;
+          document.getElementById("sobraMsg").innerText = 'Sobrou R$ '+sobrou.toFixed(2).replace('.',',')+' — escolha onde abater:';
+          document.getElementById("sobraLista").innerHTML = outrosAtivos.map(e=>{
+            const c = clientes.find(c=>c.id===e.clienteId);
+            const s = calcSaldo(e, pagamentos);
+            return `<button class="btn btn-ghost" style="margin-top:8px;text-align:left" onclick="abaterSobra(${e.id})">
+              <b>${c?.nome||'Sem nome'}</b> — Saldo: R$ ${s.toFixed(2).replace('.',',')}
+            </button>`;
+          }).join('');
+          setTimeout(()=>document.getElementById("modalSobra").classList.add("open"), 400);
         };
       };
     };
   } else {
     load();
   }
+}
+
+function abaterSobra(empId){
+  fecharModal('modalSobra');
+  const emp = emprestimos.find(e=>e.id===empId);
+  if(!emp) return;
+  let tx = db.transaction("pagamentos","readwrite");
+  tx.objectStore("pagamentos").add({empId, valor:sobraValor, data:sobraData, transferido:true});
+  tx.oncomplete = ()=>{
+    // Recarrega tudo fresco
+    let rp = db.transaction("pagamentos","readonly");
+    rp.objectStore("pagamentos").getAll().onsuccess = ev=>{
+      pagamentos = ev.target.result;
+      let re = db.transaction("emprestimos","readonly");
+      re.objectStore("emprestimos").getAll().onsuccess = ev2=>{
+        emprestimos = ev2.target.result;
+        processarPagamento(empId, sobraValor, sobraData, pagamentos);
+      };
+    };
+  };
 }
 
 // ── PAGAMENTO: DETALHE (clicar no item) ──
@@ -618,12 +662,14 @@ function abrirEditarPag(){
 }
 function confirmarEditPag(){
   if(!editPagId) return;
-  const p     = pagamentos.find(x=>x.id===editPagId);
+  const id    = editPagId;
+  const p     = pagamentos.find(x=>x.id===id);
+  if(!p) return;
   const valor = Number(document.getElementById("editPagValor").value);
   const data  = document.getElementById("editPagData").value;
   if(!valor) return;
   let tx = db.transaction("pagamentos","readwrite");
-  tx.objectStore("pagamentos").put({id:editPagId,empId:p.empId,valor,data});
+  tx.objectStore("pagamentos").put({id, empId:p.empId, valor, data, transferido:p.transferido||false});
   tx.oncomplete = ()=>{ fecharModal('modalEditPag'); load(); };
 }
 function abrirDelPag(){
@@ -732,6 +778,11 @@ function apagarCliente(id){
 // ── FECHAR MODAL ──
 function fecharModal(id){
   document.getElementById(id).classList.remove("open");
+  // Só zera tudo se não for o detalhe (que abre outro modal logo depois)
+  if(id === 'modalPagDetalhe') {
+    pagDetalheId = null;
+    return;
+  }
   pagandoId=null; editandoId=null; apagandoId=null;
   obsEmpId=null; pagDetalheId=null; editPagId=null; delPagId=null;
 }
@@ -740,10 +791,21 @@ function fecharModal(id){
 function dias(d){ return Math.floor((new Date()-new Date(d))/(1000*60*60*24)); }
 
 function calc(e){
-  const jurosDia = e.taxa ? (e.valor*(e.taxa/100))/30 : 0;
-  const totalBruto = e.valor + (jurosDia*dias(e.data));
+  // Calcula dia a dia: juros incidem sobre o saldo devedor do dia
+  const taxaDia = e.taxa ? (e.taxa/100)/30 : 0;
+  const d = dias(e.data);
   const pago = pagamentos.filter(p=>p.empId===e.id).reduce((a,b)=>a+b.valor,0);
-  return { atual:totalBruto-pago, pago, jurosDia };
+
+  // Juros simples sobre o saldo atual (principal - pago + juros acumulados)
+  // Para juros simples: total = principal * (1 + taxa*dias/30)
+  const totalBruto = e.valor * (1 + (e.taxa ? (e.taxa/100) : 0) * d / 30);
+  const atual = totalBruto - pago;
+
+  // Juros do dia sobre o saldo atual
+  const saldoAtual = Math.max(atual, 0);
+  const jurosDia = saldoAtual * taxaDia;
+
+  return { atual, pago, jurosDia };
 }
 
 function statusVencimento(venc){
@@ -906,7 +968,7 @@ function load(){
         const cliente = clientes.find(c=>c.id===emp.clienteId);
         const pagsEmp = pagamentos.filter(p=>p.empId===emp.id);
         const totalPagoEmp = pagsEmp.reduce((a,b)=>a+b.valor,0);
-        const lucroEmp = totalPagoEmp - emp.valor;
+        const lucroEmp = Math.max(0, totalPagoEmp - emp.valor);
         return `
         <div class="quit-card">
           <div class="quit-header">
