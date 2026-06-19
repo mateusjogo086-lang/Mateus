@@ -452,6 +452,24 @@ window.addEventListener("DOMContentLoaded",()=>{
   }
 });
 
+// Bloqueia quando app vai para background
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState === "hidden"){
+    // Marca como bloqueado
+    localStorage.setItem("mpLogado","0");
+    // Esconde app e mostra login quando voltar
+  }
+  if(document.visibilityState === "visible"){
+    if(!checkClienteView() && localStorage.getItem("mpLogado") !== "1"){
+      document.getElementById("app").style.display = "none";
+      document.getElementById("login").classList.remove("hidden");
+      document.getElementById("login").style.display = "";
+      document.getElementById("senha").value = "";
+      document.getElementById("erro").innerText = "";
+    }
+  }
+});
+
 // ── TABS ──
 function switchTab(name){
   document.querySelectorAll('.nav-btn').forEach((t,i)=>{
