@@ -460,10 +460,12 @@ function entrarApp(){
 
 // Verifica se já está logado
 window.addEventListener("DOMContentLoaded",()=>{
-  if(checkClienteView()) return;
+  // Se já está logado, abre o app direto mesmo com ?emp= na URL
   if(localStorage.getItem("mpLogado")==="1"){
     entrarApp();
+    return;
   }
+  if(checkClienteView()) return;
 });
 
 // Bloqueia quando app vai para background
