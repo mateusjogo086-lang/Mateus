@@ -534,26 +534,67 @@ function confirmarPag(){
   tx.objectStore("pagamentos").add({empId,valor,data});
   tx.oncomplete = ()=>{
     fecharModal('modalPag');
-    // Verifica se saldo zerou para auto-quitar
-    const emp = emprestimos.find(e=>e.id===empId);
-    if(emp && !emp.quitado){
-      // Recalcula com novo pagamento incluído
-      const todosPags = [...pagamentos, {empId, valor, data}];
-      const jurosDia = (emp.valor*(emp.taxa/100))/30;
-      const totalBruto = emp.valor + (jurosDia*dias(emp.data));
-      const totalPago = todosPags.filter(p=>p.empId===empId).reduce((a,b)=>a+b.valor,0);
-      const saldo = totalBruto - totalPago;
-      if(saldo <= 0){
-        let t2 = db.transaction("emprestimos","readwrite");
-        t2.objectStore("emprestimos").put({...emp, quitado:true, dataQuitado: new Date().toISOString().slice(0,10)});
-        t2.oncomplete = ()=>{ load(); };
-      } else {
-        load();
-      }
-    } else {
-      load();
-    }
+    processarPagamento(empId, valor, data, [...pagamentos, {empId,valor,data}]);
   };
+}
+
+function calcSaldo(emp, todosPags){
+  const jurosDia = emp.taxa ? (emp.valor*(emp.taxa/100))/30 : 0;
+  const totalBruto = emp.valor + (jurosDia*dias(emp.data));
+  const totalPago = todosPags.filter(p=>p.empId===emp.id).reduce((a,b)=>a+b.valor,0);
+  return totalBruto - totalPago;
+}
+
+function processarPagamento(empId, valorPago, data, todosPags){
+  const emp = emprestimos.find(e=>e.id===empId);
+  if(!emp) { load(); return; }
+
+  const saldo = calcSaldo(emp, todosPags);
+
+  // Se saldo zerou ou ficou negativo
+  if(saldo <= 0){
+    const sobrou = Math.abs(saldo);
+
+    // Quita este empréstimo
+    let t2 = db.transaction("emprestimos","readwrite");
+    t2.objectStore("emprestimos").put({...emp, quitado:true, dataQuitado: data});
+    t2.oncomplete = ()=>{
+      // Recarrega empréstimos para pegar estado atualizado
+      let t3 = db.transaction("emprestimos","readonly");
+      t3.objectStore("emprestimos").getAll().onsuccess = ev=>{
+        emprestimos = ev.target.result;
+
+        if(sobrou < 0.01){ load(); return; }
+
+        // Busca outros empréstimos ativos do mesmo cliente, mais antigo primeiro
+        const outrosAtivos = emprestimos
+          .filter(e => e.clienteId===emp.clienteId && e.id!==empId && !e.quitado)
+          .sort((a,b) => new Date(a.data) - new Date(b.data));
+
+        if(!outrosAtivos.length){
+          // Sem outros empréstimos — avisa e devolve
+          load();
+          setTimeout(()=>alert('💰 Sobrou R$ ' + sobrou.toFixed(2).replace('.',',') + ' — devolver ao cliente!'), 300);
+          return;
+        }
+
+        // Abate no empréstimo mais antigo
+        const proximo = outrosAtivos[0];
+        let txp = db.transaction("pagamentos","readwrite");
+        txp.objectStore("pagamentos").add({empId: proximo.id, valor: sobrou, data});
+        txp.oncomplete = ()=>{
+          // Atualiza lista de pagamentos e processa recursivamente
+          let t4 = db.transaction("pagamentos","readonly");
+          t4.objectStore("pagamentos").getAll().onsuccess = ev2=>{
+            pagamentos = ev2.target.result;
+            processarPagamento(proximo.id, sobrou, data, pagamentos);
+          };
+        };
+      };
+    };
+  } else {
+    load();
+  }
 }
 
 // ── PAGAMENTO: DETALHE (clicar no item) ──
