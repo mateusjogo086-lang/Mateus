@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MP Empréstimo</title>
+<meta name="theme-color" content="#0b0f1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MP Empréstimo">
+<link rel="manifest" href="data:application/json,{
+  &quot;name&quot;: &quot;MP Empréstimo&quot;,
+  &quot;short_name&quot;: &quot;MP Emp&quot;,
+  &quot;start_url&quot;: &quot;.&quot;,
+  &quot;display&quot;: &quot;standalone&quot;,
+  &quot;background_color&quot;: &quot;#0b0f1a&quot;,
+  &quot;theme_color&quot;: &quot;#0b0f1a&quot;
+}">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg: #0b0f1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1f2d42;
+    --green: #00d084;
+    --green-dim: rgba(0,208,132,0.12);
+    --green-glow: rgba(0,208,132,0.25);
+    --text: #f0f4ff;
+    --muted: #64748b;
+    --danger: #f43f5e;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+  /* LOGIN */
+  #login { display:flex; align-items:center; justify-content:center; min-height:100vh; background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,208,132,.08) 0%,transparent 70%); }
+  .login-box { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:40px 36px; width:100%; max-width:360px; text-align:center; }
+  .login-logo { width:52px; height:52px; background:var(--green-dim); border:1px solid var(--green-glow); border-radius:14px; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:22px; }
+  .login-box h1 { font-size:22px; font-weight:700; margin-bottom:4px; }
+  .login-box p { font-size:13px; color:var(--muted); margin-bottom:28px; }
+  .field { margin-bottom:14px; }
+  .field input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 16px; color:var(--text); font-size:14px; font-family:inherit; outline:none; transition:border-color .2s; }
+  .field input:focus { border-color:var(--green); }
+  .field input::placeholder { color:var(--muted); }
+  .error-msg { color:var(--danger); font-size:12px; margin-top:10px; min-height:18px; }
+
+  /* BUTTONS */
+  .btn { width:100%; padding:12px; border:none; border-radius:var(--radius-sm); background:var(--green); color:#000; font-weight:700; font-size:14px; font-family:inherit; cursor:pointer; transition:opacity .2s,transform .1s; }
+  .btn:hover { opacity:.9; }
+  .btn:active { transform:scale(.98); }
+  .btn-ghost { background:var(--surface2); color:var(--text); border:1px solid var(--border); }
+  .btn-danger { background:var(--danger); color:#fff; border:none; }
+  .btn-sm { padding:8px 16px; font-size:13px; width:auto; }
+
+  /* APP */
+  #app { display:none; max-width:480px; margin:0 auto; padding-bottom:40px; }
+  header { background:var(--surface); border-bottom:1px solid var(--border); padding:16px 20px; display:flex; align-items:center; gap:12px; position:sticky; top:0; z-index:10; }
+  .header-logo { width:34px; height:34px; background:var(--green-dim); border:1px solid var(--green-glow); border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+  header h1 { font-size:16px; font-weight:700; }
+  header span { font-size:12px; color:var(--muted); display:block; font-weight:400; }
+
+  /* DASHBOARD */
+  .dashboard { padding:16px 16px 4px; }
+  .dash-main { background:linear-gradient(135deg,#0d2b1f 0%,#0b1a2e 100%); border:1px solid var(--green-glow); border-radius:var(--radius); padding:20px; margin-bottom:10px; position:relative; overflow:hidden; }
+  .dash-main::before { content:''; position:absolute; top:-30px; right:-30px; width:120px; height:120px; background:radial-gradient(circle,rgba(0,208,132,.15) 0%,transparent 70%); pointer-events:none; }
+  .dash-main .dm-label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--green); margin-bottom:6px; }
+  .dash-main .dm-value { font-size:34px; font-weight:700; color:#fff; letter-spacing:-.5px; margin-bottom:4px; }
+  .dash-main .dm-sub { font-size:12px; color:var(--muted); }
+  .dash-main .dm-sub span { color:var(--green); font-weight:600; }
+  .dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+  .dash-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; }
+  .dash-card .dc-label { font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:6px; }
+  .dash-card .dc-value { font-size:18px; font-weight:700; color:var(--text); }
+  .dash-card .dc-value.green { color:var(--green); }
+  .dash-card .dc-value.yellow { color:#fbbf24; }
+  .dash-card .dc-sub { font-size:11px; color:var(--muted); margin-top:3px; }
+  .dash-progress { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:0; }
+  .dash-progress .dp-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .dash-progress .dp-label { font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); }
+  .dash-progress .dp-pct { font-size:12px; font-weight:700; color:var(--green); }
+  .dash-bar-bg { background:var(--surface2); border-radius:99px; height:6px; }
+  .dash-bar-fill { background:linear-gradient(90deg,#00d084,#00ffaa); border-radius:99px; height:6px; }
+
+  /* TABS */
+  .tabs { display:flex; gap:6px; padding:0 16px; margin-bottom:4px; }
+  .tab { flex:1; padding:9px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--muted); font-size:12px; font-weight:600; font-family:inherit; cursor:pointer; transition:all .2s; text-align:center; }
+  .tab.active { background:var(--green-dim); border-color:var(--green-glow); color:var(--green); }
+
+  /* PANELS */
+  .panel { padding:12px 16px; display:none; }
+  .panel.active { display:block; }
+
+  /* FORM CARD */
+  .form-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:12px; }
+  .form-card h3 { font-size:13px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:14px; }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .form-lbl { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:4px; }
+  .form-card input, .form-card select { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:11px 14px; color:var(--text); font-size:14px; font-family:inherit; outline:none; transition:border-color .2s; margin-bottom:10px; }
+  .form-card input:focus, .form-card select:focus { border-color:var(--green); }
+  .form-card input::placeholder { color:var(--muted); }
+  .form-card select option { background:var(--surface2); }
+
+  /* EMP CARD */
+  .emp-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:10px; }
+  .emp-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .emp-name { font-size:15px; font-weight:700; }
+  .emp-days { font-size:11px; background:var(--surface2); border:1px solid var(--border); border-radius:20px; padding:3px 10px; color:var(--muted); }
+
+  /* VALOR DO DIA */
+  .valor-dia-box { background:var(--green-dim); border:1px solid var(--green-glow); border-radius:10px; padding:12px 14px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; }
+  .vd-left .vd-label { font-size:11px; color:var(--green); text-transform:uppercase; letter-spacing:.06em; margin-bottom:2px; }
+  .vd-left .vd-value { font-size:22px; font-weight:700; color:var(--green); }
+  .vd-left .vd-sub { font-size:11px; color:var(--muted); margin-top:3px; }
+  .vd-right { text-align:right; }
+  .vd-right .vd-label { font-size:11px; color:var(--green); text-transform:uppercase; letter-spacing:.06em; margin-bottom:2px; }
+  .vd-right .vd-dia { font-size:16px; font-weight:700; color:var(--green); }
+
+  /* EMP GRID */
+  .emp-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:14px; }
+  .emp-stat .s-label { font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:2px; }
+  .emp-stat .s-val { font-size:14px; font-weight:600; }
+
+
+
+  /* PAGAMENTOS no card */
+  .pag-section-title { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:8px; }
+  .pag-item { display:flex; justify-content:space-between; align-items:center; padding:9px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; margin-bottom:6px; cursor:pointer; transition:border-color .2s; }
+  .pag-item:hover { border-color:#2a3a55; }
+  .pag-val { font-size:14px; font-weight:600; color:var(--green); }
+  .pag-data { font-size:11px; color:var(--muted); margin-top:2px; }
+  .pag-arrow { color:var(--muted); font-size:14px; }
+
+  /* CARD ACTIONS — só 3 botões limpos */
+  .emp-actions { display:flex; gap:8px; }
+
+  /* VENCIMENTO */
+  .venc-badge { display:inline-block; font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; margin-bottom:10px; }
+  .venc-over { background:rgba(244,63,94,.15); color:#f43f5e; border:1px solid rgba(244,63,94,.3); }
+  .venc-hoje { background:rgba(251,191,36,.15); color:#fbbf24; border:1px solid rgba(251,191,36,.3); }
+  .venc-soon { background:rgba(251,146,60,.15); color:#fb923c; border:1px solid rgba(251,146,60,.3); }
+  .venc-ok   { background:rgba(0,208,132,.12); color:#00d084; border:1px solid rgba(0,208,132,.25); }
+
+  /* MODAIS */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:100; align-items:flex-end; justify-content:center; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:20px 20px 0 0; padding:24px 20px 36px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; }
+  .modal-handle { width:36px; height:4px; background:var(--border); border-radius:4px; margin:0 auto 20px; }
+  .modal h3 { font-size:16px; font-weight:700; margin-bottom:16px; }
+  .modal p.sub { font-size:13px; color:var(--muted); margin-bottom:16px; line-height:1.5; }
+  .modal .btn { margin-top:10px; }
+  .modal input, .modal select, .modal textarea { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:11px 14px; color:var(--text); font-size:14px; font-family:inherit; outline:none; transition:border-color .2s; margin-bottom:10px; }
+  .modal input:focus, .modal select:focus, .modal textarea:focus { border-color:var(--green); }
+  .modal input::placeholder, .modal textarea::placeholder { color:var(--muted); }
+  .modal textarea { resize:vertical; min-height:120px; line-height:1.5; }
+  .modal select option { background:var(--surface2); }
+  .modal-divider { border:none; border-top:1px solid var(--border); margin:14px 0; }
+
+  /* Pagamento detail modal */
+  .pag-detail-val { font-size:28px; font-weight:700; color:var(--green); margin-bottom:4px; }
+  .pag-detail-data { font-size:13px; color:var(--muted); margin-bottom:20px; }
+
+  .empty { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
+  .empty .icon { font-size:36px; margin-bottom:10px; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="login-box">
+    <div class="login-logo">💰</div>
+    <h1>MP Empréstimo</h1>
+    <p>Acesse sua conta</p>
+    <div class="field">
+      <input type="text" id="usuario" placeholder="Usuário" autocomplete="username" autocapitalize="none" onkeydown="if(event.key==='Enter')document.getElementById('senha').focus()">
+    </div>
+    <div class="field">
+      <input type="password" id="senha" placeholder="Senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()">
+    </div>
+    <button class="btn" onclick="login()">Entrar</button>
+    <div class="error-msg" id="erro"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="header-logo">💰</div>
+    <div>
+      <h1>MP Empréstimo</h1>
+      <span>Gestão de empréstimos</span>
+    </div>
+  </header>
+
+  <div class="dashboard">
+    <!-- Card principal -->
+    <div class="dash-main">
+      <div class="dm-label">Total a receber</div>
+      <div class="dm-value" id="totalReceber">R$ 0</div>
+      <div class="dm-sub">Capital: <span id="totalEmprestado">R$ 0</span></div>
+    </div>
+
+    <!-- Grid 2x2 -->
+    <div class="dash-grid">
+      <div class="dash-card">
+        <div class="dc-label">Lucro acumulado</div>
+        <div class="dc-value green" id="totalLucro">R$ 0</div>
+        <div class="dc-sub" id="totalLucroPct">0% sobre capital</div>
+      </div>
+      <div class="dash-card">
+        <div class="dc-label">Rendendo hoje</div>
+        <div class="dc-value yellow" id="totalHoje">R$ 0</div>
+        <div class="dc-sub">por dia (todos)</div>
+      </div>
+      <div class="dash-card">
+        <div class="dc-label">Clientes ativos</div>
+        <div class="dc-value" id="totalAtivos">0</div>
+        <div class="dc-sub" id="totalPago">Pago: R$ 0</div>
+      </div>
+      <div class="dash-card">
+        <div class="dc-label">Lucro este mês</div>
+        <div class="dc-value green" id="totalMes">R$ 0</div>
+        <div class="dc-sub">30 dias de juros</div>
+      </div>
+    </div>
+
+    <!-- Barra progresso -->
+    <div class="dash-progress">
+      <div class="dp-header">
+        <span class="dp-label">Retorno sobre capital</span>
+        <span class="dp-pct" id="barPct">0%</span>
+      </div>
+      <div class="dash-bar-bg">
+        <div class="dash-bar-fill" id="barFill" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('lista')">📋 Empréstimos</button>
+    <button class="tab" onclick="switchTab('novo')">➕ Novo</button>
+    <button class="tab" onclick="switchTab('clientes')">👤 Clientes</button>
+  </div>
+
+  <div class="panel active" id="tab-lista"><div id="lista"></div></div>
+
+  <div class="panel" id="tab-novo">
+    <div class="form-card">
+      <h3>Novo Empréstimo</h3>
+      <select id="clienteSelect"></select>
+      <div class="form-row">
+        <input id="valor" type="number" placeholder="Valor (R$)">
+        <input id="taxa" type="number" placeholder="Taxa % ao mês">
+      </div>
+      <label class="form-lbl">Data de início</label>
+      <input id="data" type="date">
+      <label class="form-lbl">Data de vencimento</label>
+      <input id="vencimento" type="date">
+      <button class="btn" onclick="addEmprestimo()">Salvar Empréstimo</button>
+    </div>
+  </div>
+
+  <div class="panel" id="tab-clientes">
+    <div class="form-card">
+      <h3>Novo Cliente</h3>
+      <input id="nomeCliente" placeholder="Nome do cliente">
+      <button class="btn" onclick="addCliente()">Salvar Cliente</button>
+    </div>
+    <div class="form-card">
+      <h3>Clientes Cadastrados</h3>
+      <div id="listaClientes"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: NOVO PAGAMENTO -->
+<div class="modal-overlay" id="modalPag">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>💳 Registrar Pagamento</h3>
+    <input type="number" id="valorPag" placeholder="Valor recebido (R$)">
+    <label class="form-lbl">Data</label>
+    <input type="date" id="dataPag">
+    <button class="btn" onclick="confirmarPag()">Confirmar Pagamento</button>
+    <button class="btn btn-ghost" onclick="fecharModal('modalPag')">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL: DETALHE DO PAGAMENTO (clicar no item) -->
+<div class="modal-overlay" id="modalPagDetalhe">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>Pagamento</h3>
+    <div class="pag-detail-val" id="detalhe-val"></div>
+    <div class="pag-detail-data" id="detalhe-data"></div>
+    <hr class="modal-divider">
+    <button class="btn btn-ghost" onclick="abrirEditarPag()">✏️ Editar pagamento</button>
+    <button class="btn btn-danger" onclick="abrirDelPag()">🗑️ Apagar pagamento</button>
+    <button class="btn btn-ghost" style="margin-top:6px" onclick="fecharModal('modalPagDetalhe')">Fechar</button>
+  </div>
+</div>
+
+<!-- MODAL: EDITAR PAGAMENTO -->
+<div class="modal-overlay" id="modalEditPag">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>✏️ Editar Pagamento</h3>
+    <input type="number" id="editPagValor" placeholder="Valor (R$)">
+    <label class="form-lbl">Data</label>
+    <input type="date" id="editPagData">
+    <button class="btn" onclick="confirmarEditPag()">Salvar</button>
+    <button class="btn btn-ghost" onclick="fecharModal('modalEditPag')">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL: APAGAR PAGAMENTO -->
+<div class="modal-overlay" id="modalDelPag">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>🗑️ Apagar Pagamento</h3>
+    <p class="sub">Tem certeza que quer apagar este pagamento?</p>
+    <button class="btn btn-danger" onclick="confirmarDelPag()">Sim, apagar</button>
+    <button class="btn btn-ghost" onclick="fecharModal('modalDelPag')">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL: OBSERVAÇÃO -->
+<div class="modal-overlay" id="modalObs">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>📝 Observação</h3>
+    <textarea id="obsTexto" placeholder="Escreva aqui qualquer anotação sobre este empréstimo..."></textarea>
+    <button class="btn" onclick="salvarObs()">Salvar</button>
+    <button class="btn btn-ghost" onclick="fecharModal('modalObs')">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL: EDITAR EMPRÉSTIMO -->
+<div class="modal-overlay" id="modalEdit">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>✏️ Editar Empréstimo</h3>
+    <select id="editCliente"></select>
+    <div class="form-row" style="margin-bottom:0">
+      <input type="number" id="editValor" placeholder="Valor (R$)">
+      <input type="number" id="editTaxa" placeholder="Taxa % ao mês">
+    </div>
+    <label class="form-lbl">Data de início</label>
+    <input type="date" id="editData">
+    <label class="form-lbl">Data de vencimento</label>
+    <input type="date" id="editVencimento">
+    <button class="btn" onclick="confirmarEdit()">Salvar Alterações</button>
+    <button class="btn btn-ghost" onclick="fecharModal('modalEdit')">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL: APAGAR EMPRÉSTIMO -->
+<div class="modal-overlay" id="modalDel">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>🗑️ Apagar Empréstimo</h3>
+    <p class="sub">Tem certeza? Esta ação não pode ser desfeita. Os pagamentos relacionados também serão apagados.</p>
+    <button class="btn btn-danger" onclick="confirmarDel()">Sim, apagar tudo</button>
+    <button class="btn btn-ghost" onclick="fecharModal('modalDel')">Cancelar</button>
+  </div>
+</div>
+
+<script>
+const USUARIO_OK = "mateus";
+const SENHA_OK = "362514";
+
+let db;
+let clientes    = [];
+let emprestimos = [];
+let pagamentos  = [];
+
+let pagandoId   = null;
+let editandoId  = null;
+let apagandoId  = null;
+let obsEmpId    = null;
+let pagDetalheId= null;
+let editPagId   = null;
+let delPagId    = null;
+
+// ── LOGIN ──
+function login(){
+  const usuario = document.getElementById("usuario").value.trim().toLowerCase();
+  const senha   = document.getElementById("senha").value;
+  if(usuario === USUARIO_OK && senha === SENHA_OK){
+    document.getElementById("login").classList.add("hidden");
+    document.getElementById("app").style.display = "block";
+    initDB();
+  } else {
+    document.getElementById("erro").innerText = "Usuário ou senha incorretos";
+  }
+}
+
+// ── TABS ──
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    t.classList.toggle('active',['lista','novo','clientes'][i]===name);
+  });
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ── DB ──
+function initDB(){
+  let req = indexedDB.open("mpemprestimo",1);
+  req.onupgradeneeded = e => {
+    db = e.target.result;
+    db.createObjectStore("clientes",   {keyPath:"id",autoIncrement:true});
+    db.createObjectStore("emprestimos",{keyPath:"id",autoIncrement:true});
+    db.createObjectStore("pagamentos", {keyPath:"id",autoIncrement:true});
+  };
+  req.onsuccess = e => { db = e.target.result; load(); };
+}
+
+// ── CLIENTE ──
+function addCliente(){
+  const nome = document.getElementById("nomeCliente").value.trim();
+  if(!nome) return;
+  let tx = db.transaction("clientes","readwrite");
+  tx.objectStore("clientes").add({nome});
+  tx.oncomplete = ()=>{ document.getElementById("nomeCliente").value=""; load(); };
+}
+
+// ── EMPRÉSTIMO ──
+function addEmprestimo(){
+  const clienteId  = Number(document.getElementById("clienteSelect").value);
+  const valor      = Number(document.getElementById("valor").value);
+  const taxa       = Number(document.getElementById("taxa").value);
+  const data       = document.getElementById("data").value;
+  const vencimento = document.getElementById("vencimento").value;
+  if(!clienteId||!valor||!taxa||!data) return;
+  let tx = db.transaction("emprestimos","readwrite");
+  tx.objectStore("emprestimos").add({clienteId,valor,taxa,data,vencimento,obs:""});
+  tx.oncomplete = ()=>{
+    ["valor","taxa","data","vencimento"].forEach(id=>document.getElementById(id).value="");
+    switchTab('lista'); load();
+  };
+}
+
+// ── PAGAMENTO: NOVO ──
+function pagar(id){
+  pagandoId = id;
+  document.getElementById("valorPag").value = "";
+  document.getElementById("dataPag").value  = new Date().toISOString().slice(0,10);
+  document.getElementById("modalPag").classList.add("open");
+}
+function confirmarPag(){
+  const valor = Number(document.getElementById("valorPag").value);
+  const data  = document.getElementById("dataPag").value;
+  if(!valor||!pagandoId) return;
+  let tx = db.transaction("pagamentos","readwrite");
+  tx.objectStore("pagamentos").add({empId:pagandoId,valor,data});
+  tx.oncomplete = ()=>{ fecharModal('modalPag'); load(); };
+}
+
+// ── PAGAMENTO: DETALHE (clicar no item) ──
+function abrirPagDetalhe(id){
+  const p = pagamentos.find(x=>x.id===id);
+  if(!p) return;
+  pagDetalheId = id;
+  document.getElementById("detalhe-val").innerText  = fmt(p.valor);
+  document.getElementById("detalhe-data").innerText = "📅 " + (p.data||"—");
+  document.getElementById("modalPagDetalhe").classList.add("open");
+}
+function abrirEditarPag(){
+  const p = pagamentos.find(x=>x.id===pagDetalheId);
+  if(!p) return;
+  editPagId = pagDetalheId;
+  document.getElementById("editPagValor").value = p.valor;
+  document.getElementById("editPagData").value  = p.data||"";
+  fecharModal('modalPagDetalhe');
+  document.getElementById("modalEditPag").classList.add("open");
+}
+function confirmarEditPag(){
+  if(!editPagId) return;
+  const p     = pagamentos.find(x=>x.id===editPagId);
+  const valor = Number(document.getElementById("editPagValor").value);
+  const data  = document.getElementById("editPagData").value;
+  if(!valor) return;
+  let tx = db.transaction("pagamentos","readwrite");
+  tx.objectStore("pagamentos").put({id:editPagId,empId:p.empId,valor,data});
+  tx.oncomplete = ()=>{ fecharModal('modalEditPag'); load(); };
+}
+function abrirDelPag(){
+  delPagId = pagDetalheId;
+  fecharModal('modalPagDetalhe');
+  document.getElementById("modalDelPag").classList.add("open");
+}
+function confirmarDelPag(){
+  if(!delPagId) return;
+  let tx = db.transaction("pagamentos","readwrite");
+  tx.objectStore("pagamentos").delete(delPagId);
+  tx.oncomplete = ()=>{ fecharModal('modalDelPag'); load(); };
+}
+
+// ── OBSERVAÇÃO ──
+function abrirObs(id){
+  const emp = emprestimos.find(e=>e.id===id);
+  if(!emp) return;
+  obsEmpId = id;
+  document.getElementById("obsTexto").value = emp.obs||"";
+  document.getElementById("modalObs").classList.add("open");
+}
+function salvarObs(){
+  if(!obsEmpId) return;
+  const emp = emprestimos.find(e=>e.id===obsEmpId);
+  const obs = document.getElementById("obsTexto").value;
+  let tx = db.transaction("emprestimos","readwrite");
+  tx.objectStore("emprestimos").put({...emp, obs});
+  tx.oncomplete = ()=>{ fecharModal('modalObs'); load(); };
+}
+
+// ── EDITAR EMPRÉSTIMO ──
+function editar(id){
+  const emp = emprestimos.find(e=>e.id===id);
+  if(!emp) return;
+  editandoId = id;
+  const sel = document.getElementById("editCliente");
+  sel.innerHTML = clientes.map(c=>`<option value="${c.id}" ${c.id===emp.clienteId?'selected':''}>${c.nome}</option>`).join('');
+  document.getElementById("editValor").value      = emp.valor;
+  document.getElementById("editTaxa").value       = emp.taxa;
+  document.getElementById("editData").value       = emp.data;
+  document.getElementById("editVencimento").value = emp.vencimento||"";
+  document.getElementById("modalEdit").classList.add("open");
+}
+function confirmarEdit(){
+  if(!editandoId) return;
+  const emp        = emprestimos.find(e=>e.id===editandoId);
+  const clienteId  = Number(document.getElementById("editCliente").value);
+  const valor      = Number(document.getElementById("editValor").value);
+  const taxa       = Number(document.getElementById("editTaxa").value);
+  const data       = document.getElementById("editData").value;
+  const vencimento = document.getElementById("editVencimento").value;
+  if(!clienteId||!valor||!taxa||!data) return;
+  let tx = db.transaction("emprestimos","readwrite");
+  tx.objectStore("emprestimos").put({id:editandoId,clienteId,valor,taxa,data,vencimento,obs:emp.obs||""});
+  tx.oncomplete = ()=>{ fecharModal('modalEdit'); load(); };
+}
+
+// ── APAGAR EMPRÉSTIMO ──
+function apagar(id){ apagandoId=id; document.getElementById("modalDel").classList.add("open"); }
+function confirmarDel(){
+  if(!apagandoId) return;
+  const id = apagandoId;
+  let tx = db.transaction("emprestimos","readwrite");
+  tx.objectStore("emprestimos").delete(id);
+  tx.oncomplete = ()=>{
+    let t2 = db.transaction("pagamentos","readwrite");
+    let store = t2.objectStore("pagamentos");
+    store.getAll().onsuccess = e=>{
+      e.target.result.filter(p=>p.empId===id).forEach(p=>store.delete(p.id));
+    };
+    t2.oncomplete = ()=>{ fecharModal('modalDel'); load(); };
+  };
+}
+
+// ── FECHAR MODAL ──
+function fecharModal(id){
+  document.getElementById(id).classList.remove("open");
+  pagandoId=null; editandoId=null; apagandoId=null;
+  obsEmpId=null; pagDetalheId=null; editPagId=null; delPagId=null;
+}
+
+// ── UTILS ──
+function dias(d){ return Math.floor((new Date()-new Date(d))/(1000*60*60*24)); }
+
+function calc(e){
+  const jurosDia = (e.valor*(e.taxa/100))/30;
+  const totalBruto = e.valor + (jurosDia*dias(e.data));
+  const pago = pagamentos.filter(p=>p.empId===e.id).reduce((a,b)=>a+b.valor,0);
+  return { atual:totalBruto-pago, pago, jurosDia };
+}
+
+function statusVencimento(venc){
+  if(!venc) return null;
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const v=new Date(venc); v.setHours(0,0,0,0);
+  const diff=Math.round((v-hoje)/(1000*60*60*24));
+  if(diff<0)   return {txt:`Vencido há ${Math.abs(diff)} dia${Math.abs(diff)>1?'s':''}`,cls:'venc-over'};
+  if(diff===0) return {txt:'Vence hoje!',cls:'venc-hoje'};
+  if(diff<=5)  return {txt:`Vence em ${diff} dia${diff>1?'s':''}`,cls:'venc-soon'};
+  return {txt:`Vence em ${diff} dias`,cls:'venc-ok'};
+}
+
+function fmt(n){ return "R$ "+Number(n).toFixed(2).replace('.',','); }
+
+// ── LOAD ──
+function load(){
+  const t1=db.transaction("clientes","readonly");
+  const t2=db.transaction("emprestimos","readonly");
+  const t3=db.transaction("pagamentos","readonly");
+
+  t1.objectStore("clientes").getAll().onsuccess = e=>{
+    clientes = e.target.result;
+    document.getElementById("clienteSelect").innerHTML =
+      clientes.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+    const lc = document.getElementById("listaClientes");
+    lc.innerHTML = clientes.length
+      ? clientes.map(c=>`<div class="pag-item" style="cursor:default"><span>${c.nome}</span></div>`).join('')
+      : '<div class="empty"><div class="icon">👤</div>Nenhum cliente cadastrado</div>';
+  };
+
+  t3.objectStore("pagamentos").getAll().onsuccess = e=>{ pagamentos = e.target.result; };
+
+  t2.objectStore("emprestimos").getAll().onsuccess = e=>{
+    emprestimos = e.target.result;
+    let totalEmp=0, totalRec=0;
+    const lista = document.getElementById("lista");
+
+    if(!emprestimos.length){
+      lista.innerHTML='<div class="empty"><div class="icon">📋</div>Nenhum empréstimo ainda</div>';
+      document.getElementById("totalEmprestado").innerText=fmt(0);
+      document.getElementById("totalReceber").innerText=fmt(0);
+      ["totalLucro","totalHoje","totalMes","totalPago"].forEach(id=>{
+        const el=document.getElementById(id); if(el) el.innerText=fmt(0);
+      });
+      document.getElementById("totalAtivos").innerText="0";
+      document.getElementById("totalLucroPct").innerText="0% sobre capital";
+      document.getElementById("barPct").innerText="0%";
+      document.getElementById("barFill").style.width="0%";
+      return;
+    }
+
+    lista.innerHTML = emprestimos.map(emp=>{
+      const cliente = clientes.find(c=>c.id===emp.clienteId);
+      const {atual,pago,jurosDia} = calc(emp);
+      totalEmp += emp.valor;
+      totalRec += atual;
+
+      const amanha = atual + jurosDia;
+      const sv = statusVencimento(emp.vencimento);
+      const vencBadge = sv ? `<div class="venc-badge ${sv.cls}">📅 ${sv.txt}</div>` : '';
+
+      const pagsEmp = pagamentos.filter(p=>p.empId===emp.id);
+      const histHTML = pagsEmp.length ? `
+        <div style="margin-bottom:12px">
+          <div class="pag-section-title">Pagamentos recebidos</div>
+          ${pagsEmp.map(p=>`
+            <div class="pag-item" onclick="abrirPagDetalhe(${p.id})">
+              <div>
+                <div class="pag-val">+${fmt(p.valor)}</div>
+                <div class="pag-data">📅 ${p.data||'—'}</div>
+              </div>
+              <span class="pag-arrow">›</span>
+            </div>
+          `).join('')}
+        </div>` : '';
+
+      const obsIcon = emp.obs ? '📝' : '📝';
+      const obsHasContent = emp.obs ? ' style="border-color:var(--green-glow);color:var(--green)"' : '';
+
+      return `
+      <div class="emp-card">
+        <div class="emp-header">
+          <div class="emp-name">${cliente?.nome||'Sem nome'}</div>
+          <div class="emp-days">${dias(emp.data)} dias</div>
+        </div>
+        ${vencBadge}
+        <div class="valor-dia-box">
+          <div class="vd-left">
+            <div class="vd-label">Valor hoje</div>
+            <div class="vd-value">${fmt(atual)}</div>
+            <div class="vd-sub">Amanhã: ${fmt(amanha)}</div>
+          </div>
+          <div class="vd-right">
+            <div class="vd-label">Por dia</div>
+            <div class="vd-dia">${fmt(jurosDia)}</div>
+          </div>
+        </div>
+        <div class="emp-grid">
+          <div class="emp-stat">
+            <div class="s-label">Principal</div>
+            <div class="s-val">${fmt(emp.valor)}</div>
+          </div>
+          <div class="emp-stat">
+            <div class="s-label">Pago</div>
+            <div class="s-val">${fmt(pago)}</div>
+          </div>
+          <div class="emp-stat">
+            <div class="s-label">Taxa</div>
+            <div class="s-val">${emp.taxa}%/mês</div>
+          </div>
+        </div>
+        ${histHTML}
+        <div class="emp-actions">
+          <button class="btn btn-sm" onclick="pagar(${emp.id})">💳 Pagar</button>
+          <button class="btn btn-sm btn-ghost" onclick="abrirObs(${emp.id})"${obsHasContent}>📝${emp.obs ? " ●" : ""}</button>
+          <button class="btn btn-sm btn-ghost" onclick="editar(${emp.id})">✏️</button>
+          <button class="btn btn-sm btn-danger" onclick="apagar(${emp.id})">🗑️</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    document.getElementById("totalEmprestado").innerText=fmt(totalEmp);
+    document.getElementById("totalReceber").innerText=fmt(totalRec);
+
+    // Calculos dashboard
+    let totalJurosDia = 0;
+    let totalLucro = 0;
+    let totalPago = 0;
+    emprestimos.forEach(emp=>{
+      const {atual,pago,jurosDia} = calc(emp);
+      totalJurosDia += jurosDia;
+      totalLucro += (atual + pago) - emp.valor;  // juros acumulados = saldo atual + pago - principal
+      totalPago += pago;
+    });
+    const lucroMes = totalJurosDia * 30;
+    const pct = totalEmp > 0 ? (totalLucro/totalEmp)*100 : 0;
+    const barW = Math.min(pct*2, 100); // barra escala: 50% retorno = barra cheia
+
+    document.getElementById("totalLucro").innerText  = fmt(totalLucro);
+    document.getElementById("totalLucroPct").innerText = pct.toFixed(1)+"% sobre capital";
+    document.getElementById("totalHoje").innerText   = fmt(totalJurosDia);
+    document.getElementById("totalAtivos").innerText = emprestimos.length;
+    document.getElementById("totalPago").innerText   = "Pago: "+fmt(totalPago);
+    document.getElementById("totalMes").innerText    = fmt(lucroMes);
+    document.getElementById("barPct").innerText      = pct.toFixed(1)+"%";
+    document.getElementById("barFill").style.width   = barW+"%";
+  };
+}
+</script>
+</body>
+</html>
