@@ -56,44 +56,46 @@
   .btn:active { transform:scale(.98); }
   .btn-ghost { background:var(--surface2); color:var(--text); border:1px solid var(--border); }
   .btn-danger { background:var(--danger); color:#fff; border:none; }
-  .btn-sm { padding:8px 16px; font-size:13px; width:auto; }
+  .btn-sm { padding:6px 12px; font-size:12px; width:auto; }
 
   /* APP */
   #app { display:none; max-width:480px; margin:0 auto; padding-bottom:40px; }
-  header { background:var(--surface); border-bottom:1px solid var(--border); padding:16px 20px; display:flex; align-items:center; gap:12px; position:sticky; top:0; z-index:10; }
-  .header-logo { width:34px; height:34px; background:var(--green-dim); border:1px solid var(--green-glow); border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
-  header h1 { font-size:16px; font-weight:700; }
-  header span { font-size:12px; color:var(--muted); display:block; font-weight:400; }
+  header { background:var(--surface); border-bottom:1px solid var(--border); padding:10px 16px; display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:10; }
+  .header-logo { width:28px; height:28px; background:var(--green-dim); border:1px solid var(--green-glow); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+  header h1 { font-size:14px; font-weight:700; }
+  header span { font-size:11px; color:var(--muted); display:block; font-weight:400; }
 
   /* DASHBOARD */
-  .dashboard { padding:16px 16px 4px; }
-  .dash-main { background:linear-gradient(135deg,#0d2b1f 0%,#0b1a2e 100%); border:1px solid var(--green-glow); border-radius:var(--radius); padding:20px; margin-bottom:10px; position:relative; overflow:hidden; }
+  .dashboard { padding:10px 12px 4px; }
+  .dash-main { background:linear-gradient(135deg,#0d2b1f 0%,#0b1a2e 100%); border:1px solid var(--green-glow); border-radius:var(--radius); padding:14px; margin-bottom:8px; position:relative; overflow:hidden; }
   .dash-main::before { content:''; position:absolute; top:-30px; right:-30px; width:120px; height:120px; background:radial-gradient(circle,rgba(0,208,132,.15) 0%,transparent 70%); pointer-events:none; }
-  .dash-main .dm-label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--green); margin-bottom:6px; }
-  .dash-main .dm-value { font-size:34px; font-weight:700; color:#fff; letter-spacing:-.5px; margin-bottom:4px; }
-  .dash-main .dm-sub { font-size:12px; color:var(--muted); }
+  .dash-main .dm-label { font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--green); margin-bottom:3px; }
+  .dash-main .dm-value { font-size:26px; font-weight:700; color:#fff; letter-spacing:-.5px; margin-bottom:2px; }
+  .dash-main .dm-sub { font-size:11px; color:var(--muted); }
   .dash-main .dm-sub span { color:var(--green); font-weight:600; }
-  .dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
-  .dash-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; }
-  .dash-card .dc-label { font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:6px; }
-  .dash-card .dc-value { font-size:18px; font-weight:700; color:var(--text); }
+  .dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+  .dash-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
+  .dash-card .dc-label { font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:3px; }
+  .dash-card .dc-value { font-size:15px; font-weight:700; color:var(--text); }
   .dash-card .dc-value.green { color:var(--green); }
   .dash-card .dc-value.yellow { color:#fbbf24; }
-  .dash-card .dc-sub { font-size:11px; color:var(--muted); margin-top:3px; }
-  .dash-progress { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:0; }
-  .dash-progress .dp-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .dash-card .dc-sub { font-size:10px; color:var(--muted); margin-top:2px; }
+  .dash-progress { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:0; }
+  .dash-progress .dp-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
   .dash-progress .dp-label { font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); }
   .dash-progress .dp-pct { font-size:12px; font-weight:700; color:var(--green); }
   .dash-bar-bg { background:var(--surface2); border-radius:99px; height:6px; }
   .dash-bar-fill { background:linear-gradient(90deg,#00d084,#00ffaa); border-radius:99px; height:6px; }
 
-  /* TABS */
-  .tabs { display:flex; gap:6px; padding:0 16px; margin-bottom:4px; }
-  .tab { flex:1; padding:9px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--muted); font-size:12px; font-weight:600; font-family:inherit; cursor:pointer; transition:all .2s; text-align:center; }
-  .tab.active { background:var(--green-dim); border-color:var(--green-glow); color:var(--green); }
+  /* BOTTOM NAV */
+  .bottom-nav { position:fixed; bottom:0; left:0; right:0; max-width:480px; margin:0 auto; background:var(--surface); border-top:1px solid var(--border); display:flex; z-index:20; padding-bottom:env(safe-area-inset-bottom); }
+  .nav-btn { flex:1; padding:12px 4px 10px; background:none; border:none; color:var(--muted); font-size:10px; font-weight:600; font-family:inherit; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; transition:color .2s; }
+  .nav-btn .nav-icon { font-size:20px; line-height:1; }
+  .nav-btn.active { color:var(--green); }
+  #app { padding-bottom:70px; }
 
   /* PANELS */
-  .panel { padding:12px 16px; display:none; }
+  .panel { padding:8px 12px; display:none; }
   .panel.active { display:block; }
 
   /* FORM CARD */
@@ -107,40 +109,40 @@
   .form-card select option { background:var(--surface2); }
 
   /* EMP CARD */
-  .emp-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:10px; }
-  .emp-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-  .emp-name { font-size:15px; font-weight:700; }
+  .emp-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px; margin-bottom:8px; }
+  .emp-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .emp-name { font-size:14px; font-weight:700; }
   .emp-days { font-size:11px; background:var(--surface2); border:1px solid var(--border); border-radius:20px; padding:3px 10px; color:var(--muted); }
 
   /* VALOR DO DIA */
-  .valor-dia-box { background:var(--green-dim); border:1px solid var(--green-glow); border-radius:10px; padding:12px 14px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; }
-  .vd-left .vd-label { font-size:11px; color:var(--green); text-transform:uppercase; letter-spacing:.06em; margin-bottom:2px; }
-  .vd-left .vd-value { font-size:22px; font-weight:700; color:var(--green); }
-  .vd-left .vd-sub { font-size:11px; color:var(--muted); margin-top:3px; }
+  .valor-dia-box { background:var(--green-dim); border:1px solid var(--green-glow); border-radius:10px; padding:9px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+  .vd-left .vd-label { font-size:10px; color:var(--green); text-transform:uppercase; letter-spacing:.06em; margin-bottom:1px; }
+  .vd-left .vd-value { font-size:18px; font-weight:700; color:var(--green); }
+  .vd-left .vd-sub { font-size:10px; color:var(--muted); margin-top:2px; }
   .vd-right { text-align:right; }
-  .vd-right .vd-label { font-size:11px; color:var(--green); text-transform:uppercase; letter-spacing:.06em; margin-bottom:2px; }
-  .vd-right .vd-dia { font-size:16px; font-weight:700; color:var(--green); }
+  .vd-right .vd-label { font-size:10px; color:var(--green); text-transform:uppercase; letter-spacing:.06em; margin-bottom:1px; }
+  .vd-right .vd-dia { font-size:14px; font-weight:700; color:var(--green); }
 
   /* EMP GRID */
-  .emp-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:14px; }
-  .emp-stat .s-label { font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:2px; }
-  .emp-stat .s-val { font-size:14px; font-weight:600; }
+  .emp-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:8px; }
+  .emp-stat .s-label { font-size:9px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:1px; }
+  .emp-stat .s-val { font-size:12px; font-weight:600; }
 
 
 
   /* PAGAMENTOS no card */
   .pag-section-title { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:8px; }
-  .pag-item { display:flex; justify-content:space-between; align-items:center; padding:9px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; margin-bottom:6px; cursor:pointer; transition:border-color .2s; }
+  .pag-item { display:flex; justify-content:space-between; align-items:center; padding:7px 10px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; margin-bottom:5px; cursor:pointer; transition:border-color .2s; }
   .pag-item:hover { border-color:#2a3a55; }
-  .pag-val { font-size:14px; font-weight:600; color:var(--green); }
-  .pag-data { font-size:11px; color:var(--muted); margin-top:2px; }
+  .pag-val { font-size:12px; font-weight:600; color:var(--green); }
+  .pag-data { font-size:10px; color:var(--muted); margin-top:1px; }
   .pag-arrow { color:var(--muted); font-size:14px; }
 
   /* CARD ACTIONS — só 3 botões limpos */
-  .emp-actions { display:flex; gap:8px; }
+  .emp-actions { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
 
   /* VENCIMENTO */
-  .venc-badge { display:inline-block; font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; margin-bottom:10px; }
+  .venc-badge { display:inline-block; font-size:10px; font-weight:600; padding:2px 8px; border-radius:20px; margin-bottom:6px; }
   .venc-over { background:rgba(244,63,94,.15); color:#f43f5e; border:1px solid rgba(244,63,94,.3); }
   .venc-hoje { background:rgba(251,191,36,.15); color:#fbbf24; border:1px solid rgba(251,191,36,.3); }
   .venc-soon { background:rgba(251,146,60,.15); color:#fb923c; border:1px solid rgba(251,146,60,.3); }
@@ -168,6 +170,16 @@
   .empty { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
   .empty .icon { font-size:36px; margin-bottom:10px; }
   .hidden { display:none !important; }
+
+  /* QUITADO */
+  .quit-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:10px; opacity:.75; }
+  .quit-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .quit-name { font-size:14px; font-weight:700; }
+  .quit-badge { font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; background:rgba(0,208,132,.12); color:#00d084; border:1px solid rgba(0,208,132,.25); }
+  .quit-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:10px; }
+  .quit-stat .s-label { font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:2px; }
+  .quit-stat .s-val { font-size:13px; font-weight:600; }
+  .quit-actions { display:flex; gap:8px; margin-top:12px; }
 </style>
 </head>
 <body>
@@ -243,13 +255,16 @@
     </div>
   </div>
 
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('lista')">📋 Empréstimos</button>
-    <button class="tab" onclick="switchTab('novo')">➕ Novo</button>
-    <button class="tab" onclick="switchTab('clientes')">👤 Clientes</button>
-  </div>
+  <nav class="bottom-nav">
+    <button class="nav-btn active" onclick="switchTab('lista')"><span class="nav-icon">📋</span>Ativos</button>
+    <button class="nav-btn" onclick="switchTab('quitados')"><span class="nav-icon">✅</span>Quitados</button>
+    <button class="nav-btn" onclick="switchTab('novo')"><span class="nav-icon">➕</span>Novo</button>
+    <button class="nav-btn" onclick="switchTab('clientes')"><span class="nav-icon">👤</span>Clientes</button>
+  </nav>
 
   <div class="panel active" id="tab-lista"><div id="lista"></div></div>
+
+  <div class="panel" id="tab-quitados"><div id="listaQuitados"></div></div>
 
   <div class="panel" id="tab-novo">
     <div class="form-card">
@@ -394,18 +409,30 @@ function login(){
   const usuario = document.getElementById("usuario").value.trim().toLowerCase();
   const senha   = document.getElementById("senha").value;
   if(usuario === USUARIO_OK && senha === SENHA_OK){
-    document.getElementById("login").classList.add("hidden");
-    document.getElementById("app").style.display = "block";
-    initDB();
+    localStorage.setItem("mpLogado","1");
+    entrarApp();
   } else {
     document.getElementById("erro").innerText = "Usuário ou senha incorretos";
   }
 }
 
+function entrarApp(){
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("app").style.display = "block";
+  initDB();
+}
+
+// Verifica se já está logado
+window.addEventListener("DOMContentLoaded",()=>{
+  if(localStorage.getItem("mpLogado")==="1"){
+    entrarApp();
+  }
+});
+
 // ── TABS ──
 function switchTab(name){
-  document.querySelectorAll('.tab').forEach((t,i)=>{
-    t.classList.toggle('active',['lista','novo','clientes'][i]===name);
+  document.querySelectorAll('.nav-btn').forEach((t,i)=>{
+    t.classList.toggle('active',['lista','quitados','novo','clientes'][i]===name);
   });
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
@@ -439,7 +466,9 @@ function addEmprestimo(){
   const taxa       = Number(document.getElementById("taxa").value);
   const data       = document.getElementById("data").value;
   const vencimento = document.getElementById("vencimento").value;
-  if(!clienteId||!valor||!taxa||!data) return;
+  if(!clienteId){ alert('Selecione um cliente!'); return; }
+  if(!valor){ alert('Digite o valor!'); return; }
+  if(!data){ alert('Escolha a data de início!'); return; }
   let tx = db.transaction("emprestimos","readwrite");
   tx.objectStore("emprestimos").add({clienteId,valor,taxa,data,vencimento,obs:""});
   tx.oncomplete = ()=>{
@@ -459,9 +488,31 @@ function confirmarPag(){
   const valor = Number(document.getElementById("valorPag").value);
   const data  = document.getElementById("dataPag").value;
   if(!valor||!pagandoId) return;
+  const empId = pagandoId;
   let tx = db.transaction("pagamentos","readwrite");
-  tx.objectStore("pagamentos").add({empId:pagandoId,valor,data});
-  tx.oncomplete = ()=>{ fecharModal('modalPag'); load(); };
+  tx.objectStore("pagamentos").add({empId,valor,data});
+  tx.oncomplete = ()=>{
+    fecharModal('modalPag');
+    // Verifica se saldo zerou para auto-quitar
+    const emp = emprestimos.find(e=>e.id===empId);
+    if(emp && !emp.quitado){
+      // Recalcula com novo pagamento incluído
+      const todosPags = [...pagamentos, {empId, valor, data}];
+      const jurosDia = (emp.valor*(emp.taxa/100))/30;
+      const totalBruto = emp.valor + (jurosDia*dias(emp.data));
+      const totalPago = todosPags.filter(p=>p.empId===empId).reduce((a,b)=>a+b.valor,0);
+      const saldo = totalBruto - totalPago;
+      if(saldo <= 0){
+        let t2 = db.transaction("emprestimos","readwrite");
+        t2.objectStore("emprestimos").put({...emp, quitado:true, dataQuitado: new Date().toISOString().slice(0,10)});
+        t2.oncomplete = ()=>{ load(); };
+      } else {
+        load();
+      }
+    } else {
+      load();
+    }
+  };
 }
 
 // ── PAGAMENTO: DETALHE (clicar no item) ──
@@ -542,7 +593,9 @@ function confirmarEdit(){
   const taxa       = Number(document.getElementById("editTaxa").value);
   const data       = document.getElementById("editData").value;
   const vencimento = document.getElementById("editVencimento").value;
-  if(!clienteId||!valor||!taxa||!data) return;
+  if(!clienteId){ alert('Selecione um cliente!'); return; }
+  if(!valor){ alert('Digite o valor!'); return; }
+  if(!data){ alert('Escolha a data de início!'); return; }
   let tx = db.transaction("emprestimos","readwrite");
   tx.objectStore("emprestimos").put({id:editandoId,clienteId,valor,taxa,data,vencimento,obs:emp.obs||""});
   tx.oncomplete = ()=>{ fecharModal('modalEdit'); load(); };
@@ -565,6 +618,31 @@ function confirmarDel(){
   };
 }
 
+// ── QUITAR ──
+function quitar(id){
+  const emp = emprestimos.find(e=>e.id===id);
+  if(!emp) return;
+  let tx = db.transaction("emprestimos","readwrite");
+  tx.objectStore("emprestimos").put({...emp, quitado:true, dataQuitado: new Date().toISOString().slice(0,10)});
+  tx.oncomplete = ()=>{ load(); };
+}
+
+function reativar(id){
+  const emp = emprestimos.find(e=>e.id===id);
+  if(!emp) return;
+  let tx = db.transaction("emprestimos","readwrite");
+  tx.objectStore("emprestimos").put({...emp, quitado:false, dataQuitado:null});
+  tx.oncomplete = ()=>{ load(); };
+}
+
+// ── APAGAR CLIENTE ──
+function apagarCliente(id){
+  if(!confirm('Apagar este cliente? Os empréstimos dele não serão apagados.')) return;
+  let tx = db.transaction("clientes","readwrite");
+  tx.objectStore("clientes").delete(id);
+  tx.oncomplete = ()=>{ load(); };
+}
+
 // ── FECHAR MODAL ──
 function fecharModal(id){
   document.getElementById(id).classList.remove("open");
@@ -576,7 +654,7 @@ function fecharModal(id){
 function dias(d){ return Math.floor((new Date()-new Date(d))/(1000*60*60*24)); }
 
 function calc(e){
-  const jurosDia = (e.valor*(e.taxa/100))/30;
+  const jurosDia = e.taxa ? (e.valor*(e.taxa/100))/30 : 0;
   const totalBruto = e.valor + (jurosDia*dias(e.data));
   const pago = pagamentos.filter(p=>p.empId===e.id).reduce((a,b)=>a+b.valor,0);
   return { atual:totalBruto-pago, pago, jurosDia };
@@ -632,7 +710,39 @@ function load(){
       return;
     }
 
-    lista.innerHTML = emprestimos.map(emp=>{
+    const ativos   = emprestimos.filter(e=>!e.quitado);
+    const quitados = emprestimos.filter(e=>e.quitado);
+
+    // Quitados panel
+    const listaQ = document.getElementById("listaQuitados");
+    if(!quitados.length){
+      listaQ.innerHTML='<div class="empty"><div class="icon">✅</div>Nenhum empréstimo quitado ainda</div>';
+    } else {
+      listaQ.innerHTML = quitados.map(emp=>{
+        const cliente = clientes.find(c=>c.id===emp.clienteId);
+        const pagsEmp = pagamentos.filter(p=>p.empId===emp.id);
+        const totalPagoEmp = pagsEmp.reduce((a,b)=>a+b.valor,0);
+        const lucroEmp = totalPagoEmp - emp.valor;
+        return `
+        <div class="quit-card">
+          <div class="quit-header">
+            <div class="quit-name">${cliente?.nome||'Sem nome'}</div>
+            <div class="quit-badge">✅ Quitado ${emp.dataQuitado||''}</div>
+          </div>
+          <div class="quit-grid">
+            <div class="quit-stat"><div class="s-label">Principal</div><div class="s-val">${fmt(emp.valor)}</div></div>
+            <div class="quit-stat"><div class="s-label">Total pago</div><div class="s-val">${fmt(totalPagoEmp)}</div></div>
+            <div class="quit-stat"><div class="s-label">Lucro</div><div class="s-val" style="color:var(--green)">${fmt(lucroEmp)}</div></div>
+          </div>
+          <div class="quit-actions">
+            <button class="btn btn-sm btn-ghost" onclick="reativar(${emp.id})">↩️ Reativar</button>
+            <button class="btn btn-sm btn-danger" onclick="apagar(${emp.id})">🗑️</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    lista.innerHTML = ativos.map(emp=>{
       const cliente = clientes.find(c=>c.id===emp.clienteId);
       const {atual,pago,jurosDia} = calc(emp);
       totalEmp += emp.valor;
@@ -701,6 +811,8 @@ function load(){
         </div>
       </div>`;
     }).join('');
+
+    if(!ativos.length) lista.innerHTML='<div class="empty"><div class="icon">📋</div>Nenhum empréstimo ativo</div>';
 
     document.getElementById("totalEmprestado").innerText=fmt(totalEmp);
     document.getElementById("totalReceber").innerText=fmt(totalRec);
