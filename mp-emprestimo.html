@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>MP Empréstimo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d1117; --card: #161b22; --card2: #1c2430;
+    --green: #2ecc71; --green-dark: #27ae60;
+    --yellow: #f39c12; --red: #e74c3c;
+    --text: #e6edf3; --muted: #8b949e; --border: #30363d;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; max-width: 480px; margin: 0 auto; padding-bottom: 80px;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #0d2818 0%, #0d1117 100%);
+    padding: 20px 16px 24px;
+  }
+  .header-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .app-icon { width: 36px; height: 36px; background: var(--green-dark); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .app-name { font-size: 15px; font-weight: 600; }
+  .app-sub { font-size: 12px; color: var(--muted); }
+  .header-total { font-size: 36px; font-weight: 700; }
+  .header-capital { font-size: 14px; color: var(--muted); }
+  .header-capital span { color: var(--green); }
+
+  /* STATS */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px 16px; }
+  .stat-card { background: var(--card); border-radius: 12px; padding: 14px; border: 1px solid var(--border); }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+  .stat-value { font-size: 20px; font-weight: 700; }
+  .stat-value.green { color: var(--green); }
+  .stat-value.yellow { color: var(--yellow); }
+  .stat-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* PROGRESS */
+  .progress-section { margin: 0 16px 14px; background: var(--card); border-radius: 12px; padding: 14px; border: 1px solid var(--border); }
+  .progress-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .progress-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .progress-pct { font-size: 13px; font-weight: 600; color: var(--green); }
+  .progress-bar { background: var(--border); border-radius: 4px; height: 6px; }
+  .progress-fill { background: var(--green); border-radius: 4px; height: 6px; }
+
+  /* MÊS HEADER */
+  .month-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 16px 16px 8px;
+  }
+  .month-label {
+    font-size: 13px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .month-line { flex: 1; height: 1px; background: var(--border); }
+  .month-count {
+    font-size: 11px; color: var(--muted);
+    background: var(--card2); border-radius: 10px;
+    padding: 2px 8px;
+  }
+
+  /* LOAN CARD */
+  .loan-card { margin: 0 16px 12px; background: var(--card); border-radius: 14px; border: 1px solid var(--border); overflow: hidden; }
+  .loan-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 8px; }
+  .loan-name { font-size: 17px; font-weight: 700; }
+  .loan-meta-row { display: flex; align-items: center; gap: 6px; }
+  .loan-days { background: var(--card2); border-radius: 20px; padding: 3px 10px; font-size: 12px; color: var(--muted); }
+  .parcela-badge { background: rgba(243,156,18,.15); border: 1px solid rgba(243,156,18,.3); color: var(--yellow); border-radius: 20px; padding: 3px 10px; font-size: 12px; font-weight: 600; }
+  .due-badge { display: inline-flex; align-items: center; gap: 6px; margin: 0 14px 10px; background: rgba(46,204,113,.15); border: 1px solid rgba(46,204,113,.3); color: var(--green); border-radius: 20px; padding: 4px 12px; font-size: 13px; font-weight: 500; }
+  .due-badge.warning { background: rgba(243,156,18,.15); border-color: rgba(243,156,18,.3); color: var(--yellow); }
+  .due-badge.danger { background: rgba(231,76,60,.15); border-color: rgba(231,76,60,.3); color: var(--red); }
+
+  .loan-value-box { margin: 0 14px 10px; background: linear-gradient(135deg, #0d2818, #152a1e); border-radius: 12px; padding: 14px; border: 1px solid rgba(46,204,113,.2); display: flex; justify-content: space-between; align-items: flex-start; }
+  .valor-hoje-label { font-size: 11px; color: var(--green); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 2px; }
+  .valor-hoje { font-size: 24px; font-weight: 700; color: var(--green); }
+  .valor-amanha { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .por-dia-label { font-size: 11px; color: var(--muted); text-align: right; }
+  .por-dia { font-size: 16px; font-weight: 700; color: var(--green); text-align: right; }
+
+  .loan-info { display: grid; grid-template-columns: 1fr 1fr 1fr; padding: 8px 14px 10px; gap: 4px; }
+  .info-label { font-size: 10px; color: var(--muted); text-transform: uppercase; }
+  .info-val { font-size: 14px; font-weight: 600; }
+
+  .loan-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 14px 14px; }
+  .btn { border: none; border-radius: 10px; padding: 11px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .btn-green { background: var(--green); color: #000; }
+  .btn-dark { background: var(--card2); color: var(--text); }
+  .btn-red { background: var(--red); color: #fff; }
+
+  /* PARCELAS MINI TIMELINE */
+  .parcelas-timeline { margin: 0 14px 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .parc-dot {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    flex: 1; min-width: 50px;
+  }
+  .parc-circle {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    border: 2px solid var(--border);
+    color: var(--muted); background: var(--card2);
+  }
+  .parc-circle.pago { background: var(--green); color: #000; border-color: var(--green); }
+  .parc-circle.atual { background: var(--yellow); color: #000; border-color: var(--yellow); }
+  .parc-mes { font-size: 10px; color: var(--muted); }
+
+  /* FORM */
+  .new-loan-form { margin: 0 16px 14px; background: var(--card); border-radius: 14px; padding: 18px; border: 1px solid var(--border); }
+  .form-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 16px; }
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: block; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  select, input[type="text"], input[type="number"], input[type="date"] {
+    width: 100%; background: var(--card2); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text); font-size: 15px;
+    padding: 12px 14px; outline: none; appearance: none; -webkit-appearance: none;
+  }
+  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b949e' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+  input:focus, select:focus { border-color: var(--green); }
+  input::placeholder { color: var(--muted); }
+  input[type="date"] { min-height: 46px; color-scheme: dark; }
+
+  /* PARCELAS PREVIEW */
+  .parcelas-preview { background: var(--card2); border-radius: 10px; padding: 12px 14px; border: 1px solid var(--border); }
+  .parc-preview-title { font-size: 11px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .5px; }
+  .parc-preview-item { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .parc-preview-item:last-child { border-bottom: none; }
+  .parc-preview-mes { font-size: 13px; font-weight: 600; }
+  .parc-preview-val { font-size: 13px; color: var(--green); }
+  .parc-preview-date { font-size: 11px; color: var(--muted); }
+
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0 10px; }
+  .toggle-label { font-size: 14px; color: var(--text); }
+  .toggle-switch { position: relative; width: 44px; height: 24px; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 24px; cursor: pointer; transition: .3s; }
+  .toggle-slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: .3s; }
+  input:checked + .toggle-slider { background: var(--green); }
+  input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+  .btn-save { width: 100%; margin-top: 6px; background: var(--green); color: #000; border: none; border-radius: 12px; padding: 16px; font-size: 16px; font-weight: 700; cursor: pointer; }
+  .btn-save:active { background: var(--green-dark); }
+
+  /* BOTTOM NAV */
+  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--card); border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(4, 1fr); padding: 8px 0 12px; z-index: 100; }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); cursor: pointer; padding: 4px; border: none; background: none; }
+  .nav-item.active { color: var(--green); }
+  .nav-icon { font-size: 22px; }
+  .nav-icon-check { width: 26px; height: 26px; background: var(--green); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-text { font-size: 15px; }
+
+  .cliente-item { margin: 0 16px 10px; background: var(--card); border-radius: 12px; padding: 14px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .cliente-name { font-size: 16px; font-weight: 600; }
+  .cliente-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .cliente-badge { background: rgba(46,204,113,.15); color: var(--green); border-radius: 8px; padding: 4px 10px; font-size: 12px; font-weight: 600; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- TAB ATIVOS -->
+<div id="tab-ativos" class="tab-content active">
+  <div class="header">
+    <div class="header-top">
+      <div class="app-icon">💰</div>
+      <div><div class="app-name">MP Empréstimo</div><div class="app-sub">Gestão de empréstimos</div></div>
+    </div>
+    <div class="header-total" id="total-geral">R$ 1.028,00</div>
+    <div class="header-capital">Capital: <span>R$ 1.000,00</span></div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Lucro Acumulado</div>
+      <div class="stat-value green" id="stat-lucro">R$ 28,00</div>
+      <div class="stat-sub">2.8% sobre capital</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Rendendo Hoje</div>
+      <div class="stat-value yellow" id="stat-hoje">R$ 10,28</div>
+      <div class="stat-sub">por dia (todos)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Clientes Ativos</div>
+      <div class="stat-value" id="stat-clientes">2</div>
+      <div class="stat-sub">Pago: R$ 0,00</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Lucro Este Mês</div>
+      <div class="stat-value green" id="stat-mes">R$ 308,40</div>
+      <div class="stat-sub">30 dias de juros</div>
+    </div>
+  </div>
+
+  <div class="progress-section">
+    <div class="progress-header">
+      <span class="progress-label">Retorno sobre Capital</span>
+      <span class="progress-pct">2.8%</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" style="width:2.8%"></div></div>
+  </div>
+
+  <div id="loans-container"></div>
+</div>
+
+<!-- TAB QUITADOS -->
+<div id="tab-quitados" class="tab-content">
+  <div class="header">
+    <div class="header-top">
+      <div class="app-icon">💰</div>
+      <div><div class="app-name">MP Empréstimo</div><div class="app-sub">Empréstimos quitados</div></div>
+    </div>
+  </div>
+  <div id="quitados-container">
+    <div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">Nenhum empréstimo quitado ainda.</div></div>
+  </div>
+</div>
+
+<!-- TAB NOVO -->
+<div id="tab-novo" class="tab-content">
+  <div class="header">
+    <div class="header-top">
+      <div class="app-icon">💰</div>
+      <div><div class="app-name">MP Empréstimo</div><div class="app-sub">Novo empréstimo</div></div>
+    </div>
+  </div>
+
+  <div class="new-loan-form">
+    <div class="form-title">Novo Empréstimo</div>
+
+    <div class="form-group">
+      <label class="form-label">Cliente</label>
+      <select id="f-cliente">
+        <option value="">Selecione um cliente</option>
+        <option>Henrique mhnet</option>
+        <option>Amanda</option>
+        <option>Marcão</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <div class="form-row">
+        <div>
+          <label class="form-label">Valor (R$)</label>
+          <input type="number" id="f-valor" placeholder="0,00" oninput="atualizarPreview()">
+        </div>
+        <div>
+          <label class="form-label">Taxa % ao mês</label>
+          <input type="number" id="f-taxa" placeholder="30" oninput="atualizarPreview()">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Data de Início</label>
+      <input type="date" id="f-inicio" oninput="atualizarPreview()">
+    </div>
+
+    <!-- TOGGLE PARCELAS -->
+    <div class="form-group">
+      <div class="toggle-row">
+        <span class="toggle-label">💡 Parcelar em meses diferentes</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggle-parcelas" onchange="toggleParcelas()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <!-- SEM PARCELAS: só vencimento -->
+      <div id="campo-sem-parcelas">
+        <label class="form-label">Data de Vencimento</label>
+        <input type="date" id="f-vencimento" oninput="atualizarPreview()">
+      </div>
+
+      <!-- COM PARCELAS -->
+      <div id="campo-com-parcelas" class="hidden">
+        <label class="form-label">Número de Parcelas</label>
+        <input type="number" id="f-parcelas" placeholder="Ex: 2" min="2" max="24" oninput="atualizarPreview()">
+        <div style="margin-top:10px; font-size:12px; color:var(--muted)">
+          📅 Vencimento: dia do mês de início, nos próximos meses
+        </div>
+      </div>
+    </div>
+
+    <!-- PREVIEW PARCELAS -->
+    <div id="parcelas-preview-box" class="form-group hidden">
+      <div class="parcelas-preview">
+        <div class="parc-preview-title">📋 Resumo das parcelas</div>
+        <div id="parcelas-preview-lista"></div>
+      </div>
+    </div>
+
+    <button class="btn-save" onclick="salvarEmprestimo()">Salvar Empréstimo</button>
+  </div>
+</div>
+
+<!-- TAB CLIENTES -->
+<div id="tab-clientes" class="tab-content">
+  <div class="header">
+    <div class="header-top">
+      <div class="app-icon">💰</div>
+      <div><div class="app-name">MP Empréstimo</div><div class="app-sub">Clientes</div></div>
+    </div>
+  </div>
+  <div id="clientes-container" style="padding-top:14px"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-item active" onclick="switchTab('ativos',this)">
+    <span class="nav-icon">📋</span><span>Ativos</span>
+  </button>
+  <button class="nav-item" onclick="switchTab('quitados',this)">
+    <span class="nav-icon-check">✓</span><span>Quitados</span>
+  </button>
+  <button class="nav-item" onclick="switchTab('novo',this)">
+    <span class="nav-icon">＋</span><span>Novo</span>
+  </button>
+  <button class="nav-item" onclick="switchTab('clientes',this)">
+    <span class="nav-icon">👤</span><span>Clientes</span>
+  </button>
+</nav>
+
+<script>
+// ─── DADOS INICIAIS ───────────────────────────────────────────────────────────
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MESES_CURTO = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+let emprestimos = [
+  {
+    id: 1, cliente: 'Henrique mhnet', principal: 200, taxa: 30,
+    inicio: '2025-06-04', vencimento: '2025-07-04',
+    parcelas: 1, parcelaAtual: 1, pago: 0, ativo: true
+  },
+  {
+    id: 2, cliente: 'Amanda', principal: 800, taxa: 30,
+    inicio: '2025-06-19', vencimento: '2025-07-19',
+    parcelas: 1, parcelaAtual: 1, pago: 0, ativo: true
+  }
+];
+
+// Exemplo: empréstimo com 2 parcelas (Marcão - Julho e Agosto)
+emprestimos.push({
+  id: 3, cliente: 'Marcão', principal: 500, taxa: 30,
+  inicio: '2025-06-19', vencimento: '2025-07-19',
+  parcelas: 2, parcelaAtual: 1, pago: 0, ativo: true,
+  todasParcelas: [
+    { mes: 'Julho', venc: '2025-07-19', pago: false },
+    { mes: 'Agosto', venc: '2025-08-19', pago: false }
+  ]
+});
+
+let nextId = 4;
+let clientes = ['Henrique mhnet', 'Amanda', 'Marcão'];
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+function hoje() { return new Date(); }
+
+function diasAteVencer(dataStr) {
+  const venc = new Date(dataStr + 'T12:00:00');
+  const diff = Math.ceil((venc - hoje()) / 86400000);
+  return diff;
+}
+
+function calcValorHoje(principal, taxa, inicioStr) {
+  const inicio = new Date(inicioStr + 'T12:00:00');
+  const dias = Math.max(0, Math.floor((hoje() - inicio) / 86400000));
+  const taxaDia = taxa / 100 / 30;
+  return principal * (1 + taxaDia * dias);
+}
+
+function fmtBRL(n) {
+  return 'R$ ' + n.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function mesAno(dataStr) {
+  const d = new Date(dataStr + 'T12:00:00');
+  return MESES[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+function getMesVenc(e) {
+  // Para separar por mês de vencimento da parcela atual
+  const dataRef = e.vencimento || e.inicio;
+  const d = new Date(dataRef + 'T12:00:00');
+  return d.getFullYear() * 100 + d.getMonth(); // ex: 202507
+}
+
+function getMesLabel(chave) {
+  const ano = Math.floor(chave / 100);
+  const mes = chave % 100;
+  return MESES[mes] + ' ' + ano;
+}
+
+// ─── RENDER ATIVOS ──────────────────────────────────────────────────────────
+function renderAtivos() {
+  const ativos = emprestimos.filter(e => e.ativo);
+  const container = document.getElementById('loans-container');
+
+  // Agrupa por mês de vencimento
+  const grupos = {};
+  ativos.forEach(e => {
+    const chave = getMesVenc(e);
+    if (!grupos[chave]) grupos[chave] = [];
+    grupos[chave].push(e);
+  });
+
+  const chaves = Object.keys(grupos).sort((a,b) => a - b);
+  let html = '';
+
+  chaves.forEach(chave => {
+    const lista = grupos[chave];
+    html += `
+      <div class="month-header">
+        <span class="month-label">${getMesLabel(parseInt(chave))}</span>
+        <div class="month-line"></div>
+        <span class="month-count">${lista.length} empréstimo${lista.length > 1 ? 's' : ''}</span>
+      </div>`;
+
+    lista.forEach(e => {
+      const valorHoje = calcValorHoje(e.principal, e.taxa, e.inicio);
+      const taxaDia = e.taxa / 100 / 30;
+      const porDia = e.principal * taxaDia;
+      const valorAmanha = valorHoje + porDia;
+      const dias = diasAteVencer(e.vencimento);
+      const diasDecorridos = Math.max(0, Math.floor((hoje() - new Date(e.inicio + 'T12:00:00')) / 86400000));
+
+      let badgeClass = 'due-badge';
+      let badgeTxt = '';
+      if (dias < 0) { badgeClass += ' danger'; badgeTxt = `⚠️ Venceu há ${Math.abs(dias)} dias`; }
+      else if (dias <= 3) { badgeClass += ' warning'; badgeTxt = `⚡ Vence em ${dias} dia${dias!==1?'s':''}`; }
+      else { badgeTxt = `📅 Vence em ${dias} dias`; }
+
+      // Timeline de parcelas
+      let timelineHTML = '';
+      if (e.parcelas > 1 && e.todasParcelas) {
+        timelineHTML = `<div class="parcelas-timeline">`;
+        e.todasParcelas.forEach((p, i) => {
+          const cls = p.pago ? 'parc-circle pago' : (i === e.parcelaAtual - 1 ? 'parc-circle atual' : 'parc-circle');
+          timelineHTML += `<div class="parc-dot"><div class="${cls}">${i+1}</div><div class="parc-mes">${p.mes.substring(0,3)}</div></div>`;
+        });
+        timelineHTML += `</div>`;
+      }
+
+      const parcelaBadge = e.parcelas > 1
+        ? `<span class="parcela-badge">${e.parcelaAtual}/${e.parcelas}</span>`
+        : '';
+
+      html += `
+        <div class="loan-card">
+          <div class="loan-header">
+            <div class="loan-name">${e.cliente}</div>
+            <div class="loan-meta-row">
+              ${parcelaBadge}
+              <div class="loan-days">📅 ${diasDecorridos} dias</div>
+            </div>
+          </div>
+          <div class="${badgeClass}">${badgeTxt}</div>
+          ${timelineHTML}
+          <div class="loan-value-box">
+            <div>
+              <div class="valor-hoje-label">Valor Hoje</div>
+              <div class="valor-hoje">${fmtBRL(valorHoje)}</div>
+              <div class="valor-amanha">Amanhã: ${fmtBRL(valorAmanha)}</div>
+            </div>
+            <div>
+              <div class="por-dia-label">Por Dia</div>
+              <div class="por-dia">${fmtBRL(porDia)}</div>
+            </div>
+          </div>
+          <div class="loan-info">
+            <div><div class="info-label">Principal</div><div class="info-val">${fmtBRL(e.principal)}</div></div>
+            <div><div class="info-label">Pago</div><div class="info-val">${fmtBRL(e.pago)}</div></div>
+            <div><div class="info-label">Taxa</div><div class="info-val">${e.taxa}%/mês</div></div>
+          </div>
+          <div class="loan-actions">
+            <button class="btn btn-green" onclick="pagarLoan(${e.id})">💳 Pagar</button>
+            <button class="btn btn-dark">📝 Notas</button>
+            <button class="btn btn-dark" onclick="editarLoan(${e.id})">✏️ Editar</button>
+            <button class="btn btn-red" onclick="deletarLoan(${e.id})">🗑️ Deletar</button>
+          </div>
+        </div>`;
+    });
+  });
+
+  if (!html) {
+    html = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">Nenhum empréstimo ativo.</div></div>';
+  }
+
+  container.innerHTML = html;
+  renderClientes();
+}
+
+// ─── AÇÕES ────────────────────────────────────────────────────────────────────
+function pagarLoan(id) {
+  const e = emprestimos.find(x => x.id === id);
+  if (!e) return;
+  const valor = calcValorHoje(e.principal, e.taxa, e.inicio);
+  if (confirm(`Marcar ${fmtBRL(valor)} como pago para ${e.cliente}?`)) {
+    if (e.parcelas > 1 && e.parcelaAtual < e.parcelas) {
+      e.todasParcelas[e.parcelaAtual - 1].pago = true;
+      e.parcelaAtual++;
+      const proxVenc = e.todasParcelas[e.parcelaAtual - 1].venc;
+      e.vencimento = proxVenc;
+      e.pago += valor;
+    } else {
+      e.ativo = false;
+    }
+    renderAtivos();
+  }
+}
+
+function deletarLoan(id) {
+  if (confirm('Deletar este empréstimo?')) {
+    emprestimos = emprestimos.filter(x => x.id !== id);
+    renderAtivos();
+  }
+}
+
+function editarLoan(id) {
+  alert('Função de edição em breve!');
+}
+
+// ─── FORMULÁRIO ──────────────────────────────────────────────────────────────
+function toggleParcelas() {
+  const on = document.getElementById('toggle-parcelas').checked;
+  document.getElementById('campo-sem-parcelas').classList.toggle('hidden', on);
+  document.getElementById('campo-com-parcelas').classList.toggle('hidden', !on);
+  atualizarPreview();
+}
+
+function atualizarPreview() {
+  const on = document.getElementById('toggle-parcelas').checked;
+  const valor = parseFloat(document.getElementById('f-valor').value) || 0;
+  const taxa = parseFloat(document.getElementById('f-taxa').value) || 0;
+  const inicio = document.getElementById('f-inicio').value;
+  const previewBox = document.getElementById('parcelas-preview-box');
+  const lista = document.getElementById('parcelas-preview-lista');
+
+  if (!valor || !taxa || !inicio) { previewBox.classList.add('hidden'); return; }
+
+  const taxaDia = taxa / 100 / 30;
+  const porDia = valor * taxaDia;
+
+  if (!on) {
+    const venc = document.getElementById('f-vencimento').value;
+    if (!venc) { previewBox.classList.add('hidden'); return; }
+    const dias = Math.max(0, Math.ceil((new Date(venc + 'T12:00:00') - new Date(inicio + 'T12:00:00')) / 86400000));
+    const total = valor + porDia * dias;
+    previewBox.classList.remove('hidden');
+    lista.innerHTML = `
+      <div class="parc-preview-item">
+        <div><div class="parc-preview-mes">1 parcela</div><div class="parc-preview-date">${formatarData(venc)}</div></div>
+        <div class="parc-preview-val">${fmtBRL(total)}</div>
+      </div>`;
+  } else {
+    const nParc = parseInt(document.getElementById('f-parcelas').value) || 0;
+    if (nParc < 2) { previewBox.classList.add('hidden'); return; }
+    previewBox.classList.remove('hidden');
+    const dInicio = new Date(inicio + 'T12:00:00');
+    let html = '';
+    for (let i = 1; i <= nParc; i++) {
+      const vencMes = new Date(dInicio);
+      vencMes.setMonth(vencMes.getMonth() + i);
+      const dias = Math.ceil((vencMes - dInicio) / 86400000);
+      const total = valor + porDia * dias;
+      const mesNome = MESES[vencMes.getMonth()] + ' ' + vencMes.getFullYear();
+      html += `
+        <div class="parc-preview-item">
+          <div><div class="parc-preview-mes">Parcela ${i} — ${mesNome}</div><div class="parc-preview-date">${formatarData(vencMes.toISOString().split('T')[0])}</div></div>
+          <div class="parc-preview-val">${fmtBRL(total)}</div>
+        </div>`;
+    }
+    lista.innerHTML = html;
+  }
+}
+
+function formatarData(str) {
+  const [a,m,d] = str.split('-');
+  return `${d}/${m}/${a}`;
+}
+
+function salvarEmprestimo() {
+  const cliente = document.getElementById('f-cliente').value;
+  const valor = parseFloat(document.getElementById('f-valor').value);
+  const taxa = parseFloat(document.getElementById('f-taxa').value);
+  const inicio = document.getElementById('f-inicio').value;
+  const on = document.getElementById('toggle-parcelas').checked;
+
+  if (!cliente || !valor || !taxa || !inicio) {
+    alert('Preencha todos os campos obrigatórios.'); return;
+  }
+
+  if (!on) {
+    const venc = document.getElementById('f-vencimento').value;
+    if (!venc) { alert('Informe a data de vencimento.'); return; }
+    emprestimos.push({ id: nextId++, cliente, principal: valor, taxa, inicio, vencimento: venc, parcelas: 1, parcelaAtual: 1, pago: 0, ativo: true });
+  } else {
+    const nParc = parseInt(document.getElementById('f-parcelas').value);
+    if (!nParc || nParc < 2) { alert('Informe ao menos 2 parcelas.'); return; }
+    const dInicio = new Date(inicio + 'T12:00:00');
+    const todasParcelas = [];
+    for (let i = 1; i <= nParc; i++) {
+      const vencMes = new Date(dInicio);
+      vencMes.setMonth(vencMes.getMonth() + i);
+      todasParcelas.push({
+        mes: MESES[vencMes.getMonth()],
+        venc: vencMes.toISOString().split('T')[0],
+        pago: false
+      });
+    }
+    emprestimos.push({
+      id: nextId++, cliente, principal: valor, taxa, inicio,
+      vencimento: todasParcelas[0].venc,
+      parcelas: nParc, parcelaAtual: 1, pago: 0, ativo: true, todasParcelas
+    });
+  }
+
+  if (!clientes.includes(cliente)) clientes.push(cliente);
+
+  // Reset form
+  document.getElementById('f-cliente').value = '';
+  document.getElementById('f-valor').value = '';
+  document.getElementById('f-taxa').value = '';
+  document.getElementById('f-inicio').value = '';
+  document.getElementById('f-vencimento').value = '';
+  document.getElementById('f-parcelas').value = '';
+  document.getElementById('toggle-parcelas').checked = false;
+  document.getElementById('campo-sem-parcelas').classList.remove('hidden');
+  document.getElementById('campo-com-parcelas').classList.add('hidden');
+  document.getElementById('parcelas-preview-box').classList.add('hidden');
+
+  renderAtivos();
+  switchTab('ativos', document.querySelector('.nav-item'));
+}
+
+// ─── CLIENTES ────────────────────────────────────────────────────────────────
+function renderClientes() {
+  const cont = document.getElementById('clientes-container');
+  let html = '';
+  clientes.forEach(c => {
+    const ativos = emprestimos.filter(e => e.cliente === c && e.ativo).length;
+    html += `
+      <div class="cliente-item">
+        <div>
+          <div class="cliente-name">${c}</div>
+          <div class="cliente-sub">${ativos} empréstimo${ativos !== 1 ? 's' : ''} ativo${ativos !== 1 ? 's' : ''}</div>
+        </div>
+        <div class="cliente-badge" ${!ativos ? 'style="background:rgba(139,148,158,.15);color:var(--muted)"' : ''}>${ativos ? 'Ativo' : 'Inativo'}</div>
+      </div>`;
+  });
+  cont.innerHTML = html || '<div class="empty-state"><div class="empty-icon">👤</div><div class="empty-text">Nenhum cliente cadastrado.</div></div>';
+}
+
+// ─── NAV ─────────────────────────────────────────────────────────────────────
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  el.classList.add('active');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+renderAtivos();
+</script>
+</body>
+</html>
