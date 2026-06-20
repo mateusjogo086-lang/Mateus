@@ -35,7 +35,7 @@
     --radius-sm: 8px;
   }
 
-  * { box-sizing:border-box; margin:0; padding:0; }
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
   body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; }
 
   /* LOGIN */
@@ -66,14 +66,14 @@
   header span { font-size:11px; color:var(--muted); display:block; font-weight:400; }
 
   /* DASHBOARD */
-  .dashboard { padding:10px 12px 4px; }
+  .dashboard { padding:10px 12px 4px; box-sizing:border-box; width:100%; }
   .dash-main { background:linear-gradient(135deg,#0d2b1f 0%,#0b1a2e 100%); border:1px solid var(--green-glow); border-radius:var(--radius); padding:14px; margin-bottom:8px; position:relative; overflow:hidden; }
   .dash-main::before { content:''; position:absolute; top:-30px; right:-30px; width:120px; height:120px; background:radial-gradient(circle,rgba(0,208,132,.15) 0%,transparent 70%); pointer-events:none; }
   .dash-main .dm-label { font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--green); margin-bottom:3px; }
   .dash-main .dm-value { font-size:26px; font-weight:700; color:#fff; letter-spacing:-.5px; margin-bottom:2px; }
   .dash-main .dm-sub { font-size:11px; color:var(--muted); }
   .dash-main .dm-sub span { color:var(--green); font-weight:600; }
-  .dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+  .dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; box-sizing:border-box; width:100%; }
   .dash-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
   .dash-card .dc-label { font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:3px; }
   .dash-card .dc-value { font-size:15px; font-weight:700; color:var(--text); }
@@ -95,7 +95,7 @@
   #app { padding-bottom:70px; }
 
   /* PANELS */
-  .panel { padding:8px 12px; display:none; overflow-x:hidden; }
+  .panel { padding:8px 12px 8px 12px; display:none; overflow-x:hidden; box-sizing:border-box; width:100%; }
   .panel.active { display:block; }
 
   /* FORM CARD */
@@ -103,19 +103,20 @@
   .form-card h3 { font-size:13px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:14px; }
   .form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .form-lbl { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:4px; }
-  .form-card input, .form-card select { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:11px 14px; color:var(--text); font-size:14px; font-family:inherit; outline:none; transition:border-color .2s; margin-bottom:10px; box-sizing:border-box; }
+  .form-card input, .form-card select { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:11px 14px; color:var(--text); font-size:14px; font-family:inherit; outline:none; transition:border-color .2s; margin-bottom:10px; box-sizing:border-box; height:44px; }
+  .form-card input[type=date] { -webkit-appearance:none; appearance:none; height:44px; line-height:1; }
   .form-card input:focus, .form-card select:focus { border-color:var(--green); }
   .form-card input::placeholder { color:var(--muted); }
   .form-card select option { background:var(--surface2); }
 
   /* EMP CARD */
-  .emp-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px; margin-bottom:8px; overflow:hidden; }
+  .emp-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px; margin-bottom:8px; overflow:hidden; box-sizing:border-box; width:100%; }
   .emp-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
   .emp-name { font-size:14px; font-weight:700; }
   .emp-days { font-size:11px; background:var(--surface2); border:1px solid var(--border); border-radius:20px; padding:3px 10px; color:var(--muted); }
 
   /* VALOR DO DIA */
-  .valor-dia-box { background:var(--green-dim); border:1px solid var(--green-glow); border-radius:10px; padding:9px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+  .valor-dia-box { background:var(--green-dim); border:1px solid var(--green-glow); border-radius:10px; padding:9px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; box-sizing:border-box; width:100%; overflow:hidden; }
   .vd-left .vd-label { font-size:10px; color:var(--green); text-transform:uppercase; letter-spacing:.06em; margin-bottom:1px; }
   .vd-left .vd-value { font-size:18px; font-weight:700; color:var(--green); }
   .vd-left .vd-sub { font-size:10px; color:var(--muted); margin-top:2px; }
@@ -124,7 +125,7 @@
   .vd-right .vd-dia { font-size:14px; font-weight:700; color:var(--green); }
 
   /* EMP GRID */
-  .emp-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:8px; }
+  .emp-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:8px; box-sizing:border-box; width:100%; }
   .emp-stat .s-label { font-size:9px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:1px; }
   .emp-stat .s-val { font-size:12px; font-weight:600; }
 
@@ -595,7 +596,9 @@ function addEmprestimo(){
 
   if(!clienteId){ alert('Selecione um cliente!'); return; }
   if(!valor){ alert('Digite o valor!'); return; }
+  if(!taxa){ alert('Digite a taxa %!'); return; }
   if(!data){ alert('Escolha a data de início!'); return; }
+  if(!vencimento){ alert('Escolha a data de vencimento!'); return; }
 
   if(parcelar && n >= 2){
     // Cria um empréstimo por parcela
@@ -828,7 +831,9 @@ function confirmarEdit(){
   const vencimento = document.getElementById("editVencimento").value;
   if(!clienteId){ alert('Selecione um cliente!'); return; }
   if(!valor){ alert('Digite o valor!'); return; }
+  if(!taxa){ alert('Digite a taxa %!'); return; }
   if(!data){ alert('Escolha a data de início!'); return; }
+  if(!vencimento){ alert('Escolha a data de vencimento!'); return; }
   let tx = db.transaction("emprestimos","readwrite");
   tx.objectStore("emprestimos").put({id:editandoId,clienteId,valor,taxa,data,vencimento,obs:emp.obs||""});
   tx.oncomplete = ()=>{ fecharModal('modalEdit'); load(); };
