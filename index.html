@@ -706,6 +706,44 @@ function mostrarConfirm(titulo, msg, onOk) {
   document.getElementById('mc-ok').onclick = function(){ fecharMC(); onOk(); };
   document.getElementById('modal-confirm').classList.add('open');
 }
+function compartilharConsulta(nomeCliente) {
+  var todos = emprestimos.filter(function(x){ return x.ativo && x.cliente === nomeCliente; });
+  todos.sort(function(a,b){ return new Date(a.vencimento) - new Date(b.vencimento); });
+
+  var totalHoje = todos.reduce(function(s,x){ return s + calcValor(x); }, 0);
+  var porDia = todos.reduce(function(s,x){ return s + x.principal*x.taxa/100/30; }, 0);
+  var dataHoje = hoje().toLocaleDateString('pt-BR');
+
+  var linhas = '';
+  todos.forEach(function(x, i){
+    var vh = calcValor(x);
+    var dv = diasVencer(x.vencimento);
+    var dvTxt = dv < 0 ? '⚠️ Venceu há '+Math.abs(dv)+' dias' : dv === 0 ? '⚠️ Vence HOJE!' : '📅 Vence em '+dv+' dias';
+    if (todos.length > 1) linhas += '\n*Empréstimo '+(i+1)+(x.parcelaTotal?' (Parcela '+x.parcelaAtual+'/'+x.parcelaTotal+'):*':':*');
+    linhas += '\n💵 Valor hoje: *'+fmtBRL(vh)+'*'
+      + '\n'+dvTxt+' ('+fmtData(x.vencimento)+')\n';
+  });
+
+  var msg = '💰 *MP Empréstimo*\n\nOlá, *'+nomeCliente+'*!'
+    + '\n\n📊 *Seu saldo em '+dataHoje+':*'
+    + linhas
+    + (todos.length > 1 ? '\n💰 *Total: '+fmtBRL(totalHoje)+'*' : '')
+    + '\n⚡ Rendendo '+fmtBRL(porDia)+' por dia'
+    + '\n\n💳 *PIX para pagamento:*\n📱 40161279805'
+    + '\n\n_Qualquer dúvida entre em contato._';
+
+  if (navigator.share) {
+    navigator.share({ title: 'MP Empréstimo — '+nomeCliente, text: msg });
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(msg).then(function(){ alert('Mensagem copiada! Cole no WhatsApp ✅'); });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = msg; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    alert('Mensagem copiada! Cole no WhatsApp ✅');
+  }
+}
+
 function fecharModalPagar() { document.getElementById('modal-pagar').classList.remove('open'); }
 
 function fecharMC() { document.getElementById('modal-confirm').classList.remove('open'); }
@@ -765,42 +803,55 @@ function copiarLink(id) {
   var e = emprestimos.find(function(x){ return x.id===id; });
   if (!e) return;
 
-  // Pega todos os empréstimos ativos deste cliente
   var todos = emprestimos.filter(function(x){ return x.ativo && x.cliente === e.cliente; });
   todos.sort(function(a,b){ return new Date(a.vencimento) - new Date(b.vencimento); });
 
-  // Monta dados simplificados para o link
-  var dadosLink = todos.map(function(x){
-    return {
-      principal: x.principal,
-      principalOriginal: x.principalOriginal || x.principal,
-      taxa: x.taxa,
-      inicio: x.inicio,
-      vencimento: x.vencimento,
-      valorParcela: x.valorParcela || null,
-      parcelaAtual: x.parcelaAtual || 1,
-      parcelaTotal: x.parcelaTotal || null
-    };
+  var totalHoje = todos.reduce(function(s,x){ return s + calcValor(x); }, 0);
+  var porDiaTotal = todos.reduce(function(s,x){ return s + x.principal*x.taxa/100/30; }, 0);
+  var totalPrincipal = todos.reduce(function(s,x){ return s + (x.principalOriginal||x.principal); }, 0);
+  var dataHoje = hoje().toLocaleDateString('pt-BR', {day:'2-digit',month:'long',year:'numeric'});
+
+  var linhas = '';
+  todos.forEach(function(x, i){
+    var vh = calcValor(x);
+    var pd = x.principal * x.taxa / 100 / 30;
+    var dv = diasVencer(x.vencimento);
+    var cor = dv < 0 ? '#e74c3c' : dv <= 5 ? '#f39c12' : '#2ecc71';
+    var dvTxt = dv < 0 ? '⚠️ Venceu há '+Math.abs(dv)+' dias' : dv === 0 ? '⚠️ Vence HOJE!' : '📅 Vence em '+dv+' dias';
+    var titulo = todos.length > 1 ? '<div style="font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Empréstimo '+(i+1)+(x.parcelaTotal?' — Parcela '+x.parcelaAtual+'/'+x.parcelaTotal:'')+'</div>' : '';
+    linhas += '<div style="background:#1c2430;border-radius:14px;padding:14px;border:1px solid #30363d;margin-bottom:10px">'
+      + titulo
+      + '<div style="display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;margin-bottom:10px;background:'+cor+'22;border:1px solid '+cor+'55;color:'+cor+'">'+dvTxt+' ('+fmtData(x.vencimento)+')</div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;background:linear-gradient(135deg,#0d2818,#152a1e);border-radius:10px;padding:12px;border:1px solid rgba(46,204,113,.2);margin-bottom:8px">'
+      + '<div><div style="font-size:10px;color:#2ecc71;text-transform:uppercase;letter-spacing:.5px">Valor hoje</div><div style="font-size:22px;font-weight:700;color:#2ecc71">'+fmtBRL(vh)+'</div><div style="font-size:11px;color:#8b949e">Amanhã: '+fmtBRL(vh+pd)+'</div></div>'
+      + '<div style="text-align:right"><div style="font-size:10px;color:#8b949e">Por dia</div><div style="font-size:15px;font-weight:700;color:#2ecc71">'+fmtBRL(pd)+'</div></div>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+      + '<div style="background:#0d1117;border-radius:8px;padding:8px"><div style="font-size:10px;color:#8b949e">Emprestado</div><div style="font-size:13px;font-weight:600">'+fmtBRL(x.principalOriginal||x.principal)+'</div></div>'
+      + '<div style="background:#0d1117;border-radius:8px;padding:8px"><div style="font-size:10px;color:#8b949e">Taxa</div><div style="font-size:13px;font-weight:600">'+x.taxa+'%/mês</div></div>'
+      + '</div></div>';
   });
 
-  var base = window.location.href.replace('index.html','').replace(/\?.*$/,'');
-  if (base.slice(-1) !== '/') base += '/';
-  var link = base + 'consulta.html?cliente=' + encodeURIComponent(e.cliente) + '&dados=' + btoa(JSON.stringify(dadosLink));
+  var html = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'
+    + '<div style="width:36px;height:36px;background:#27ae60;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">💰</div>'
+    + '<div><div style="font-size:14px;font-weight:600">MP Empréstimo</div><div style="font-size:11px;color:#8b949e">Consulta de saldo</div></div></div>'
+    + '<div style="font-size:22px;font-weight:700;margin-bottom:2px">'+e.cliente+'</div>'
+    + '<div style="font-size:12px;color:#8b949e;margin-bottom:16px">📅 '+dataHoje+'</div>'
+    + '<div style="background:linear-gradient(135deg,#0d2818,#152a1e);border-radius:14px;padding:16px;border:1px solid rgba(46,204,113,.2);margin-bottom:14px">'
+    + '<div style="font-size:11px;color:#2ecc71;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Total em aberto hoje</div>'
+    + '<div style="font-size:32px;font-weight:700;color:#2ecc71">'+fmtBRL(totalHoje)+'</div>'
+    + '<div style="font-size:12px;color:#8b949e;margin-top:4px">⚡ R$ '+Number(porDiaTotal).toFixed(2).replace('.',',')+' por dia · '+todos.length+' empréstimo'+(todos.length>1?'s':'')+'</div>'
+    + '</div>'
+    + linhas
+    + '<div style="text-align:center;font-size:11px;color:#8b949e;margin-top:8px">🔄 Atualizado automaticamente todo dia</div>'
+    + '<div style="background:#1c2430;border-radius:12px;padding:12px 14px;border:1px solid #30363d;margin-top:12px;text-align:center">'
+    + '<div style="font-size:11px;color:#8b949e;margin-bottom:4px">💳 PIX para pagamento</div>'
+    + '<div style="font-size:16px;font-weight:700;color:#2ecc71">40161279805</div>'
+    + '</div>'
+    + '<button onclick="compartilharConsulta(\''+e.cliente+'\')" style="width:100%;margin-top:14px;background:#25d366;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer">📤 Enviar para o cliente</button>';
 
-  if (navigator.share) {
-    navigator.share({
-      title: 'MP Empréstimo — '+e.cliente,
-      text: '💰 Consulte seu saldo atualizado:',
-      url: link
-    });
-  } else if (navigator.clipboard) {
-    navigator.clipboard.writeText(link).then(function(){ alert('Link copiado! Envie para '+e.cliente+' ✅'); });
-  } else {
-    var ta = document.createElement('textarea');
-    ta.value = link; document.body.appendChild(ta); ta.select();
-    document.execCommand('copy'); document.body.removeChild(ta);
-    alert('Link copiado! Envie para '+e.cliente+' ✅');
-  }
+  document.getElementById('consulta-body').innerHTML = html;
+  document.getElementById('modal-consulta').classList.add('open');
 }
 
 // ── CLIENTES
@@ -1277,5 +1328,15 @@ setInterval(checarNotif, 3600000);
   </div>
 </div>
 
+<!-- MODAL CONSULTA CLIENTE -->
+<div id="modal-consulta" class="modal">
+  <div class="modal-box" style="max-height:85vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-size:14px;font-weight:600;color:var(--muted)">🔗 Extrato do Cliente</div>
+      <button onclick="document.getElementById('modal-consulta').classList.remove('open')" style="background:var(--card2);border:none;color:var(--muted);border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer">✕ Fechar</button>
+    </div>
+    <div id="consulta-body"></div>
+  </div>
+</div>
 </body>
 </html>
