@@ -764,19 +764,42 @@ function salvarEdicao() {
 function copiarLink(id) {
   var e = emprestimos.find(function(x){ return x.id===id; });
   if (!e) return;
-  var vh = calcValor(e);
-  var pd = e.principal*e.taxa/100/30;
-  var dv = diasVencer(e.vencimento);
-  var msg = '💰 *MP Empréstimo*\n\nOlá, *'+e.cliente+'*!\n\n📤 Emprestado: '+fmtData(e.inicio)+'\n📥 Vencimento: '+fmtData(e.vencimento)+'\n💵 Principal: '+fmtBRL(e.principal)+'\n📈 Taxa: '+e.taxa+'%/mês\n\n✅ *Valor hoje: '+fmtBRL(vh)+'*\n⚡ Por dia: '+fmtBRL(pd)+'\n📅 '+(dv>=0?'Vence em '+dv+' dias':'Vencido há '+Math.abs(dv)+' dias');
+
+  // Pega todos os empréstimos ativos deste cliente
+  var todos = emprestimos.filter(function(x){ return x.ativo && x.cliente === e.cliente; });
+  todos.sort(function(a,b){ return new Date(a.vencimento) - new Date(b.vencimento); });
+
+  // Monta dados simplificados para o link
+  var dadosLink = todos.map(function(x){
+    return {
+      principal: x.principal,
+      principalOriginal: x.principalOriginal || x.principal,
+      taxa: x.taxa,
+      inicio: x.inicio,
+      vencimento: x.vencimento,
+      valorParcela: x.valorParcela || null,
+      parcelaAtual: x.parcelaAtual || 1,
+      parcelaTotal: x.parcelaTotal || null
+    };
+  });
+
+  var base = window.location.href.replace('index.html','').replace(/\?.*$/,'');
+  if (base.slice(-1) !== '/') base += '/';
+  var link = base + 'consulta.html?cliente=' + encodeURIComponent(e.cliente) + '&dados=' + btoa(JSON.stringify(dadosLink));
+
   if (navigator.share) {
-    navigator.share({title:'MP Empréstimo',text:msg});
+    navigator.share({
+      title: 'MP Empréstimo — '+e.cliente,
+      text: '💰 Consulte seu saldo atualizado:',
+      url: link
+    });
   } else if (navigator.clipboard) {
-    navigator.clipboard.writeText(msg).then(function(){ alert('Copiado! Cole no WhatsApp ✅'); });
+    navigator.clipboard.writeText(link).then(function(){ alert('Link copiado! Envie para '+e.cliente+' ✅'); });
   } else {
     var ta = document.createElement('textarea');
-    ta.value = msg; document.body.appendChild(ta); ta.select();
+    ta.value = link; document.body.appendChild(ta); ta.select();
     document.execCommand('copy'); document.body.removeChild(ta);
-    alert('Copiado! Cole no WhatsApp ✅');
+    alert('Link copiado! Envie para '+e.cliente+' ✅');
   }
 }
 
