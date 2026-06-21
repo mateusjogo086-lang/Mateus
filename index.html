@@ -137,7 +137,7 @@ input[type="date"]{min-height:44px;color-scheme:dark}
 <body>
 
 <!-- TAB ATIVOS -->
-<div id="tab-ativos" class="tab-content active">
+<div id="tab-ativos" class="tab-content">
   <div class="header">
     <div class="app-brand">
       <div class="app-icon">💰</div>
@@ -177,7 +177,7 @@ input[type="date"]{min-height:44px;color-scheme:dark}
 </div>
 
 <!-- TAB DASHBOARD -->
-<div id="tab-dash" class="tab-content">
+<div id="tab-dash" class="tab-content active">
   <div class="header">
     <div class="app-brand"><div class="app-icon">💰</div><div><div class="app-name">MP Empréstimo</div><div class="app-sub">Dashboard</div></div></div>
   </div>
@@ -225,9 +225,9 @@ input[type="date"]{min-height:44px;color-scheme:dark}
 
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
-  <button class="ni active" onclick="switchTab('ativos',this)"><span class="nii">📋</span><span>Ativos</span></button>
+  <button class="ni" onclick="switchTab('ativos',this)"><span class="nii">📋</span><span>Ativos</span></button>
   <button class="ni" onclick="switchTab('quitados',this)"><span class="nic">✓</span><span>Quitados</span></button>
-  <button class="ni" onclick="switchTab('dash',this)"><span class="nii">📊</span><span>Dashboard</span></button>
+  <button class="ni active" onclick="switchTab('dash',this)"><span class="nii">📊</span><span>Dashboard</span></button>
   <button class="ni" onclick="switchTab('novo',this)"><span class="nii">＋</span><span>Novo</span></button>
   <button class="ni" onclick="switchTab('clientes',this)"><span class="nii">👤</span><span>Clientes</span></button>
 </nav>
@@ -293,7 +293,12 @@ function diasEntre(d1s, d2) {
 }
 function calcValor(e) {
   var dias = Math.max(0, diasEntre(e.inicio, hoje()));
-  return e.principal * (1 + (e.taxa/100/30) * dias);
+  var valorDiario = e.principal * (1 + (e.taxa/100/30) * dias);
+  // Para parcelas com valor fixo, cresce por dia mas não passa do teto
+  if (e.valorParcela) {
+    return Math.min(valorDiario, e.valorParcela);
+  }
+  return valorDiario;
 }
 function diasVencer(s) {
   return Math.ceil((new Date(s+'T12:00:00') - hoje()) / 86400000);
@@ -311,12 +316,14 @@ function getMesLabel(c) {
 var mesSelecionado = null;
 
 function iniciarMes() {
+  var agora = getMesChave(new Date().toISOString().split('T')[0]);
   var ativos = emprestimos.filter(function(e){ return e.ativo; });
-  if (ativos.length === 0) { mesSelecionado = getMesChave(new Date().toISOString().split('T')[0]); return; }
+  if (ativos.length === 0) { mesSelecionado = agora; return; }
   var chaves = ativos.map(function(e){ return getMesChave(e.vencimento); });
   chaves.sort(function(a,b){return a-b;});
-  // Começa no mês mais próximo do atual
-  var agora = getMesChave(new Date().toISOString().split('T')[0]);
+  // Se tem empréstimos no mês atual, mostra ele primeiro
+  if (chaves.indexOf(agora) >= 0) { mesSelecionado = agora; return; }
+  // Senão mostra o mais próximo
   mesSelecionado = chaves.reduce(function(prev, c){ return Math.abs(c-agora) < Math.abs(prev-agora) ? c : prev; }, chaves[0]);
 }
 
@@ -445,6 +452,8 @@ function pagarLoan(id) {
   document.getElementById('pag-valor').value = '';
   document.getElementById('pag-data').value = new Date().toISOString().split('T')[0];
   document.getElementById('pag-resto').textContent = '';
+  document.getElementById('pag-outros').style.display = 'none';
+  document.getElementById('pag-outros-lista').innerHTML = '';
   document.getElementById('modal-pagar').classList.add('open');
   setTimeout(function(){ document.getElementById('pag-valor').focus(); }, 100);
 }
@@ -533,8 +542,14 @@ function confirmarPagamento() {
     document.getElementById('pag-resto').innerHTML = '<span style="color:var(--red)">⚠️ Informe o valor recebido.</span>';
     return;
   }
-  if (recebido > vh + 0.01) {
-    document.getElementById('pag-resto').innerHTML = '<span style="color:var(--red)">⚠️ Máximo: '+fmtBRL(vh)+'</span>';
+
+  // Calcula o máximo permitido: este empréstimo + todos os outros do cliente
+  var outros = emprestimos.filter(function(x){ return x.ativo && x.id !== id && x.cliente === e.cliente; });
+  var totalOutros = outros.reduce(function(s,o){ return s + calcValor(o); }, 0);
+  var maxPermitido = vh + totalOutros;
+
+  if (recebido > maxPermitido + 0.01) {
+    document.getElementById('pag-resto').innerHTML = '<span style="color:var(--red)">⚠️ Máximo: '+fmtBRL(maxPermitido)+'</span>';
     return;
   }
 
@@ -549,16 +564,19 @@ function confirmarPagamento() {
 
   // Pagamento total ou parcial
   if (recebido >= vh - 0.01) {
-    // Quita este empréstimo
-    e.pago = (e.pago||0) + vh;
-    if (e.parcelas > 1 && e.parcelaAtual < e.parcelas) {
-      e.todasParcelas[e.parcelaAtual-1].pago = true;
-      e.parcelaAtual++;
-      e.vencimento = e.todasParcelas[e.parcelaAtual-1].venc;
-      e.inicio = dataPag;
+    // Quita este empréstimo / parcela
+    e.pago = (e.pago||0) + recebido;
+    // Marca esta parcela como paga
+    e.ativo = false;
+    e.dataPagamento = dataPag;
+    // Se tem próxima parcela do mesmo grupo, navega para aquele mês
+    if (e.parcelaTotal && e.parcelaAtual < e.parcelaTotal) {
+      var proxParcela = emprestimos.find(function(x){
+        return x.ativo && x.grupoId === e.grupoId && x.parcelaAtual === e.parcelaAtual + 1;
+      });
+      if (proxParcela) mesSelecionado = getMesChave(proxParcela.vencimento);
     } else {
-      e.ativo = false;
-      e.dataPagamento = dataPag;
+      mesSelecionado = null;
     }
     // Distribui sobra nos outros empréstimos do mesmo cliente
     var sobra = recebido - vh;
@@ -567,7 +585,7 @@ function confirmarPagamento() {
       outros.forEach(function(o) {
         if (sobra <= 0.01) return;
         var vho = calcValor(o);
-        o.snapshot = { principal: o.principal, pago: o.pago||0, inicio: o.inicio, ativo: o.ativo, dataPagamento: o.dataPagamento||null };
+        o.snapshot = { principal: o.principal, pago: o.pago||0, inicio: o.inicio, ativo: o.ativo, dataPagamento: o.dataPagamento||null, valorParcela: o.valorParcela };
         if (sobra >= vho - 0.01) {
           // Quita este também
           o.pago = (o.pago||0) + vho;
@@ -575,11 +593,16 @@ function confirmarPagamento() {
           o.dataPagamento = dataPag;
           sobra -= vho;
         } else {
-          // Abate parcial
+          // Abate parcial — desconta do valorParcela desta parcela
           o.pago = (o.pago||0) + sobra;
-          var jurosO = vho - o.principal;
-          var abateO = sobra > jurosO ? sobra - jurosO : 0;
-          o.principal = Math.max(0, o.principal - abateO);
+          // Reduz o valor desta parcela pelo que foi abatido
+          if (o.valorParcela) {
+            o.valorParcela = Math.max(0, o.valorParcela - sobra);
+          } else {
+            var jurosO = vho - o.principal;
+            var abateO = sobra > jurosO ? sobra - jurosO : 0;
+            o.principal = Math.max(0, o.principal - abateO);
+          }
           o.inicio = dataPag;
           sobra = 0;
         }
@@ -853,7 +876,37 @@ function salvarEmprestimo() {
       var vm = new Date(di); vm.setMonth(vm.getMonth()+i);
       tp.push({mes:MESES[vm.getMonth()],venc:vm.toISOString().split('T')[0],pago:false});
     }
-    emprestimos.push({id:nextId++,cliente:cli,principal:val,principalOriginal:val,taxa:tax,inicio:ini,vencimento:tp[0].venc,parcelas:np,parcelaAtual:1,pago:0,ativo:true,obs:'',todasParcelas:tp});
+    // Cria um empréstimo separado para cada parcela
+    var jurosTotal = val * (tax/100) * np;
+    var totalGeral = val + jurosTotal;
+    var valorParcela = totalGeral / np;
+    var principalParcela = val / np;
+    var obs_val = '';
+    var grupoBase = nextId;
+    for (var p=0; p<tp.length; p++) {
+      // Cada parcela começa a contar juros a partir do vencimento da parcela anterior
+      // Parcela 1: inicio = ini (data do empréstimo)
+      // Parcela 2: inicio = vencimento da parcela 1
+      // Parcela 3: inicio = vencimento da parcela 2
+      var inicioParc = p === 0 ? ini : tp[p-1].venc;
+      emprestimos.push({
+        id: nextId++,
+        cliente: cli,
+        principal: principalParcela,
+        principalOriginal: principalParcela,
+        taxa: tax,
+        inicio: inicioParc,
+        vencimento: tp[p].venc,
+        parcelas: np,
+        parcelaAtual: p+1,
+        parcelaTotal: np,
+        valorParcela: valorParcela,
+        pago: 0,
+        ativo: true,
+        obs: p === 0 ? obs_val : 'Parcela '+(p+1)+'/'+np,
+        grupoId: grupoBase
+      });
+    }
   }
   if (clientes.indexOf(cli)<0) { clientes.push(cli); }
   salvar();
@@ -1141,8 +1194,8 @@ if (emprestimos.length === 0) {
 }
 
 renderAtivos();
+setTimeout(renderDash, 100);
 renderQuitados();
-setTimeout(renderDash, 400);
 pedirNotif();
 checarNotif();
 setInterval(checarNotif, 3600000);
