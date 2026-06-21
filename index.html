@@ -710,37 +710,36 @@ function compartilharConsulta(nomeCliente) {
   var todos = emprestimos.filter(function(x){ return x.ativo && x.cliente === nomeCliente; });
   todos.sort(function(a,b){ return new Date(a.vencimento) - new Date(b.vencimento); });
 
-  var totalHoje = todos.reduce(function(s,x){ return s + calcValor(x); }, 0);
-  var porDia = todos.reduce(function(s,x){ return s + x.principal*x.taxa/100/30; }, 0);
-  var dataHoje = hoje().toLocaleDateString('pt-BR');
-
-  var linhas = '';
-  todos.forEach(function(x, i){
-    var vh = calcValor(x);
-    var dv = diasVencer(x.vencimento);
-    var dvTxt = dv < 0 ? '⚠️ Venceu há '+Math.abs(dv)+' dias' : dv === 0 ? '⚠️ Vence HOJE!' : '📅 Vence em '+dv+' dias';
-    if (todos.length > 1) linhas += '\n*Empréstimo '+(i+1)+(x.parcelaTotal?' (Parcela '+x.parcelaAtual+'/'+x.parcelaTotal+'):*':':*');
-    linhas += '\n💵 Valor hoje: *'+fmtBRL(vh)+'*'
-      + '\n'+dvTxt+' ('+fmtData(x.vencimento)+')\n';
+  var dadosLink = todos.map(function(x){
+    return {
+      principal: x.principal,
+      principalOriginal: x.principalOriginal || x.principal,
+      taxa: x.taxa,
+      inicio: x.inicio,
+      vencimento: x.vencimento,
+      valorParcela: x.valorParcela || null,
+      parcelaAtual: x.parcelaAtual || 1,
+      parcelaTotal: x.parcelaTotal || null
+    };
   });
 
-  var msg = '💰 *MP Empréstimo*\n\nOlá, *'+nomeCliente+'*!'
-    + '\n\n📊 *Seu saldo em '+dataHoje+':*'
-    + linhas
-    + (todos.length > 1 ? '\n💰 *Total: '+fmtBRL(totalHoje)+'*' : '')
-    + '\n⚡ Rendendo '+fmtBRL(porDia)+' por dia'
-    + '\n\n💳 *PIX para pagamento:*\n📱 40161279805'
-    + '\n\n_Qualquer dúvida entre em contato._';
+  var link = 'https://mateusjogo086-lang.github.io/Mateus/consulta.html?cliente='
+    + encodeURIComponent(nomeCliente)
+    + '&dados=' + btoa(unescape(encodeURIComponent(JSON.stringify(dadosLink))));
 
   if (navigator.share) {
-    navigator.share({ title: 'MP Empréstimo — '+nomeCliente, text: msg });
+    navigator.share({
+      title: 'MP Empréstimo — '+nomeCliente,
+      text: '💰 Consulte seu saldo atualizado:',
+      url: link
+    });
   } else if (navigator.clipboard) {
-    navigator.clipboard.writeText(msg).then(function(){ alert('Mensagem copiada! Cole no WhatsApp ✅'); });
+    navigator.clipboard.writeText(link).then(function(){ alert('Link copiado! Envie para '+nomeCliente+' ✅'); });
   } else {
     var ta = document.createElement('textarea');
-    ta.value = msg; document.body.appendChild(ta); ta.select();
+    ta.value = link; document.body.appendChild(ta); ta.select();
     document.execCommand('copy'); document.body.removeChild(ta);
-    alert('Mensagem copiada! Cole no WhatsApp ✅');
+    alert('Link copiado! Envie para '+nomeCliente+' ✅');
   }
 }
 
@@ -848,7 +847,7 @@ function copiarLink(id) {
     + '<div style="font-size:11px;color:#8b949e;margin-bottom:4px">💳 PIX para pagamento</div>'
     + '<div style="font-size:16px;font-weight:700;color:#2ecc71">40161279805</div>'
     + '</div>'
-    + '<button onclick="compartilharConsulta(\''+e.cliente+'\')" style="width:100%;margin-top:14px;background:#25d366;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer">📤 Enviar para o cliente</button>';
+    + '<button onclick="compartilharConsulta(\''+e.cliente+'\')" style="width:100%;margin-top:14px;background:#25d366;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer">📤 Enviar link para o cliente</button>';
 
   document.getElementById('consulta-body').innerHTML = html;
   document.getElementById('modal-consulta').classList.add('open');
