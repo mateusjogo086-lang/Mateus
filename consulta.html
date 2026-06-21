@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>MP Empréstimo - Consulta</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d1117;color:#e6edf3;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+.card{background:#161b22;border-radius:20px;border:1px solid #30363d;padding:24px;width:100%;max-width:400px}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.logo-icon{width:40px;height:40px;background:#27ae60;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.logo-name{font-size:16px;font-weight:700}
+.logo-sub{font-size:12px;color:#8b949e}
+.cliente-nome{font-size:24px;font-weight:700;margin-bottom:4px}
+.data-hoje{font-size:12px;color:#8b949e;margin-bottom:20px}
+.valor-box{background:linear-gradient(135deg,#0d2818,#152a1e);border-radius:14px;padding:16px;border:1px solid rgba(46,204,113,.2);margin-bottom:16px}
+.valor-label{font-size:11px;color:#2ecc71;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.valor{font-size:36px;font-weight:700;color:#2ecc71}
+.valor-amanha{font-size:13px;color:#8b949e;margin-top:4px}
+.por-dia{font-size:13px;color:#2ecc71;margin-top:2px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.info-card{background:#1c2430;border-radius:12px;padding:12px;border:1px solid #30363d}
+.info-label{font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.info-val{font-size:15px;font-weight:600}
+.due-badge{display:inline-flex;align-items:center;gap:6px;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;margin-bottom:16px;width:100%;justify-content:center}
+.due-ok{background:rgba(46,204,113,.15);border:1px solid rgba(46,204,113,.3);color:#2ecc71}
+.due-warn{background:rgba(243,156,18,.15);border:1px solid rgba(243,156,18,.3);color:#f39c12}
+.due-danger{background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.3);color:#e74c3c}
+.parcelas-box{background:#1c2430;border-radius:12px;padding:14px;border:1px solid #30363d;margin-bottom:16px}
+.parcelas-title{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.parcela-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #30363d}
+.parcela-item:last-child{border-bottom:none}
+.parcela-num{font-size:13px;font-weight:600}
+.parcela-data{font-size:11px;color:#8b949e}
+.parcela-val{font-size:13px;font-weight:700}
+.pago-badge{background:rgba(46,204,113,.2);color:#2ecc71;border-radius:6px;padding:2px 8px;font-size:11px}
+.atual-badge{background:rgba(243,156,18,.2);color:#f39c12;border-radius:6px;padding:2px 8px;font-size:11px}
+.footer{text-align:center;margin-top:16px;font-size:11px;color:#8b949e}
+.atualizado{text-align:center;font-size:11px;color:#8b949e;margin-top:8px}
+.error{text-align:center;padding:40px 20px}
+.error-icon{font-size:48px;margin-bottom:12px}
+.error-txt{font-size:15px;color:#8b949e}
+</style>
+</head>
+<body>
+<div class="card" id="main-card">
+  <div class="logo">
+    <div class="logo-icon">💰</div>
+    <div><div class="logo-name">MP Empréstimo</div><div class="logo-sub">Consulta de saldo</div></div>
+  </div>
+  <div id="conteudo"></div>
+</div>
+
+<script>
+function fmtBRL(n) {
+  return 'R$ ' + Number(n).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+function fmtData(s) {
+  if (!s) return '';
+  var p = s.split('-');
+  return p[2]+'/'+p[1]+'/'+p[0];
+}
+function hoje() { return new Date(); }
+function diasEntre(d1s, d2) {
+  return Math.floor((d2 - new Date(d1s+'T12:00:00')) / 86400000);
+}
+function diasVencer(s) {
+  return Math.ceil((new Date(s+'T12:00:00') - hoje()) / 86400000);
+}
+function calcValorEmprestimo(principal, taxa, inicio, valorParcela) {
+  var dias = Math.max(0, diasEntre(inicio, hoje()));
+  var val = principal * (1 + (taxa/100/30) * dias);
+  if (valorParcela) return Math.min(val, valorParcela);
+  return val;
+}
+
+// Pega parâmetros da URL
+var params = new URLSearchParams(window.location.search);
+var cliente = params.get('cliente');
+var dados = params.get('dados'); // JSON com todos os empréstimos
+
+var cont = document.getElementById('conteudo');
+
+if (!cliente || !dados) {
+  cont.innerHTML = '<div class="error"><div class="error-icon">🔒</div><div class="error-txt">Link inválido ou expirado.</div></div>';
+} else {
+  try {
+    var emprestimos = JSON.parse(atob(dados));
+    var dataHoje = hoje().toLocaleDateString('pt-BR', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+
+    var totalHoje = emprestimos.reduce(function(s,e){ return s + calcValorEmprestimo(e.principal, e.taxa, e.inicio, e.valorParcela); }, 0);
+    var totalPrincipal = emprestimos.reduce(function(s,e){ return s + (e.principalOriginal||e.principal); }, 0);
+    var porDiaTotal = emprestimos.reduce(function(s,e){ return s + e.principal*e.taxa/100/30; }, 0);
+
+    var html = '<div class="cliente-nome">'+cliente+'</div>';
+    html += '<div class="data-hoje">📅 '+dataHoje+'</div>';
+
+    // Box valor total
+    html += '<div class="valor-box">';
+    html += '<div class="valor-label">Total em aberto hoje</div>';
+    html += '<div class="valor">'+fmtBRL(totalHoje)+'</div>';
+    html += '<div class="por-dia">⚡ Rendendo R$ '+Number(porDiaTotal).toFixed(2).replace('.',',')+' por dia</div>';
+    html += '</div>';
+
+    // Info grid
+    html += '<div class="info-grid">';
+    html += '<div class="info-card"><div class="info-label">💵 Total emprestado</div><div class="info-val">'+fmtBRL(totalPrincipal)+'</div></div>';
+    html += '<div class="info-card"><div class="info-label">📋 Empréstimos</div><div class="info-val">'+emprestimos.length+' ativo'+(emprestimos.length>1?'s':'')+'</div></div>';
+    html += '</div>';
+
+    // Cada empréstimo
+    emprestimos.forEach(function(e, i) {
+      var vh = calcValorEmprestimo(e.principal, e.taxa, e.inicio, e.valorParcela);
+      var pd = e.principal * e.taxa / 100 / 30;
+      var dv = diasVencer(e.vencimento);
+
+      var dueClass = 'due-badge due-ok';
+      var dueTxt = '📅 Vence em '+dv+' dias ('+fmtData(e.vencimento)+')';
+      if (dv < 0) { dueClass='due-badge due-danger'; dueTxt='⚠️ Venceu há '+Math.abs(dv)+' dias'; }
+      else if (dv === 0) { dueClass='due-badge due-danger'; dueTxt='⚠️ Vence HOJE!'; }
+      else if (dv <= 5) { dueClass='due-badge due-warn'; dueTxt='⚡ Vence em '+dv+' dias ('+fmtData(e.vencimento)+')'; }
+
+      var titulo = emprestimos.length > 1 ? 'Empréstimo '+(i+1)+(e.parcelaTotal?' — Parcela '+e.parcelaAtual+'/'+e.parcelaTotal:'') : '';
+
+      html += '<div style="background:#1c2430;border-radius:14px;padding:14px;border:1px solid #30363d;margin-bottom:12px">';
+      if (titulo) html += '<div style="font-size:12px;color:#8b949e;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">'+titulo+'</div>';
+
+      html += '<div class="'+dueClass+'">'+dueTxt+'</div>';
+
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+      html += '<div><div style="font-size:11px;color:#2ecc71;text-transform:uppercase;letter-spacing:.5px">Valor hoje</div><div style="font-size:24px;font-weight:700;color:#2ecc71">'+fmtBRL(vh)+'</div><div style="font-size:11px;color:#8b949e">Amanhã: '+fmtBRL(vh+pd)+'</div></div>';
+      html += '<div style="text-align:right"><div style="font-size:11px;color:#8b949e">Por dia</div><div style="font-size:16px;font-weight:700;color:#2ecc71">'+fmtBRL(pd)+'</div></div>';
+      html += '</div>';
+
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+      html += '<div style="background:#0d1117;border-radius:8px;padding:8px"><div style="font-size:10px;color:#8b949e">Emprestado</div><div style="font-size:13px;font-weight:600">'+fmtBRL(e.principalOriginal||e.principal)+'</div></div>';
+      html += '<div style="background:#0d1117;border-radius:8px;padding:8px"><div style="font-size:10px;color:#8b949e">Taxa</div><div style="font-size:13px;font-weight:600">'+e.taxa+'%/mês</div></div>';
+      html += '</div>';
+      html += '</div>';
+    });
+
+    html += '<div class="atualizado">🔄 Atualizado automaticamente todo dia</div>';
+    html += '<div class="footer">MP Empréstimo • Gestão de empréstimos</div>';
+
+    cont.innerHTML = html;
+  } catch(err) {
+    cont.innerHTML = '<div class="error"><div class="error-icon">❌</div><div class="error-txt">Erro ao carregar dados.</div></div>';
+  }
+}
+</script>
+</body>
+</html>
