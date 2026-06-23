@@ -189,6 +189,8 @@ input[type="date"]{min-height:44px;color-scheme:dark}
 <div id="tab-dash" class="tab-content active">
   <div class="header">
     <div class="app-brand"><div class="app-icon">💰</div><div><div class="app-name">MP Empréstimo</div><div class="app-sub">Dashboard</div></div></div>
+    <div class="header-total" id="dash-total-geral">R$ 0,00</div>
+    <div class="header-cap">Capital: <span id="dash-capital-label">R$ 0,00</span></div>
   </div>
   <div class="scroll-area">
     <div class="dash-card-grid" id="dash-cards"></div>
@@ -215,7 +217,18 @@ input[type="date"]{min-height:44px;color-scheme:dark}
       <div class="fg">
         <div class="toggle-row"><span class="toggle-label">💡 Parcelar em meses</span><label class="ts"><input type="checkbox" id="toggle-parcelas" onchange="toggleParcelas()"><span class="tsl"></span></label></div>
         <div id="campo-sem-parcelas"><label class="fl">Data de Vencimento</label><input type="date" id="f-vencimento" oninput="atualizarPreview()"></div>
-        <div id="campo-com-parcelas" class="hidden"><label class="fl">Número de Parcelas</label><input type="number" id="f-parcelas" placeholder="Ex: 2" min="2" max="24" oninput="atualizarPreview()"></div>
+        <div id="campo-com-parcelas" class="hidden">
+          <label class="fl">Número de Parcelas</label>
+          <input type="number" id="f-parcelas" placeholder="Ex: 3" min="2" max="24" oninput="atualizarPreview()">
+          <div class="toggle-row" style="margin-top:10px">
+            <span class="toggle-label" style="font-size:13px">💡 Só juros mensais + capital no final</span>
+            <label class="ts"><input type="checkbox" id="toggle-bullet" onchange="atualizarPreview()"><span class="tsl"></span></label>
+          </div>
+          <div id="bullet-info" style="display:none;background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.2);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--muted);margin-top:4px">
+            📅 Parcelas intermediárias = só juros<br>
+            🏁 Última parcela = juros + capital
+          </div>
+        </div>
       </div>
       <div id="parcelas-preview-box" class="fg hidden"><div class="pp"><div class="ppt">📋 Resumo das parcelas</div><div id="parcelas-preview-lista"></div></div></div>
       <button class="btn-save" onclick="salvarEmprestimo()">Salvar Empréstimo</button>
@@ -926,16 +939,35 @@ function atualizarPreview() {
   } else {
     var np = parseInt(document.getElementById('f-parcelas').value)||0;
     if (np < 2) { box.classList.add('hidden'); return; }
-    var juros = valor*(taxa/100)*np;
-    var totalG = valor+juros;
-    var vp = totalG/np;
+    var bullet = document.getElementById('toggle-bullet').checked;
+    document.getElementById('bullet-info').style.display = bullet ? 'block' : 'none';
     box.classList.remove('hidden');
     var di = new Date(inicio+'T12:00:00');
-    var lista = '<div class="ppi" style="background:rgba(46,204,113,.08);border-radius:8px;padding:6px 8px;margin-bottom:6px"><div><div class="ppm" style="color:var(--green)">Total geral</div><div class="ppd">'+np+'x de '+fmtBRL(vp)+'</div></div><div class="ppv">'+fmtBRL(totalG)+'</div></div>';
-    for (var i=1;i<=np;i++) {
-      var vm = new Date(di); vm.setMonth(vm.getMonth()+i);
-      var ds = vm.toISOString().split('T')[0];
-      lista += '<div class="ppi"><div><div class="ppm">Parcela '+i+' — '+MESES[vm.getMonth()]+' '+vm.getFullYear()+'</div><div class="ppd">'+fmtData(ds)+'</div></div><div class="ppv">'+fmtBRL(vp)+'</div></div>';
+    var lista = '';
+
+    if (bullet) {
+      // Bullet: parcelas intermediárias = só juros, última = juros + capital
+      var jurosMensal = valor * (taxa/100);
+      var totalGeral = jurosMensal * np + valor;
+      lista = '<div class="ppi" style="background:rgba(46,204,113,.08);border-radius:8px;padding:6px 8px;margin-bottom:6px"><div><div class="ppm" style="color:var(--green)">Total geral</div><div class="ppd">'+(np-1)+'x '+fmtBRL(jurosMensal)+' + 1x '+fmtBRL(jurosMensal+valor)+'</div></div><div class="ppv">'+fmtBRL(totalGeral)+'</div></div>';
+      for (var i=1;i<=np;i++) {
+        var vm = new Date(di); vm.setMonth(vm.getMonth()+i);
+        var ds = vm.toISOString().split('T')[0];
+        var isUltima = i === np;
+        var parcVal = isUltima ? jurosMensal + valor : jurosMensal;
+        var tipo = isUltima ? '🏁 Juros + Capital' : '📅 Só Juros';
+        lista += '<div class="ppi"><div><div class="ppm">Parcela '+i+'/'+np+' — '+MESES[vm.getMonth()]+' '+vm.getFullYear()+'</div><div class="ppd">'+fmtData(ds)+' · '+tipo+'</div></div><div class="ppv">'+fmtBRL(parcVal)+'</div></div>';
+      }
+    } else {
+      var juros = valor*(taxa/100)*np;
+      var totalG = valor+juros;
+      var vp = totalG/np;
+      lista = '<div class="ppi" style="background:rgba(46,204,113,.08);border-radius:8px;padding:6px 8px;margin-bottom:6px"><div><div class="ppm" style="color:var(--green)">Total geral</div><div class="ppd">'+np+'x de '+fmtBRL(vp)+'</div></div><div class="ppv">'+fmtBRL(totalG)+'</div></div>';
+      for (var i=1;i<=np;i++) {
+        var vm = new Date(di); vm.setMonth(vm.getMonth()+i);
+        var ds = vm.toISOString().split('T')[0];
+        lista += '<div class="ppi"><div><div class="ppm">Parcela '+i+' — '+MESES[vm.getMonth()]+' '+vm.getFullYear()+'</div><div class="ppd">'+fmtData(ds)+'</div></div><div class="ppv">'+fmtBRL(vp)+'</div></div>';
+      }
     }
     document.getElementById('parcelas-preview-lista').innerHTML = lista;
   }
@@ -967,6 +999,8 @@ function salvarEmprestimo() {
     var totalGeral = val + jurosTotal;
     var valorParcela = totalGeral / np;
     var principalParcela = val / np;
+    var bullet = document.getElementById('toggle-bullet').checked;
+    var jurosMensal = val * (tax/100);
     var obs_val = '';
     var grupoBase = nextId;
     for (var p=0; p<tp.length; p++) {
@@ -975,21 +1009,28 @@ function salvarEmprestimo() {
       // Parcela 2: inicio = vencimento da parcela 1
       // Parcela 3: inicio = vencimento da parcela 2
       var inicioParc = p === 0 ? ini : tp[p-1].venc;
+      var isUltimaParcela = (p === np - 1);
+      var vpBullet = bullet ? (isUltimaParcela ? jurosMensal + val : jurosMensal) : valorParcela;
+      var principalBullet = bullet ? (isUltimaParcela ? val : 0) : principalParcela;
+      var originalBullet = bullet ? (isUltimaParcela ? val : 0) : principalParcela;
+
       emprestimos.push({
         id: nextId++,
         cliente: cli,
-        principal: principalParcela,
-        principalOriginal: principalParcela,
+        principal: principalBullet,
+        principalOriginal: originalBullet,
         taxa: tax,
         inicio: inicioParc,
         vencimento: tp[p].venc,
         parcelas: np,
         parcelaAtual: p+1,
         parcelaTotal: np,
-        valorParcela: valorParcela,
+        valorParcela: vpBullet,
+        tipoBullet: bullet,
+        soJuros: bullet && !isUltimaParcela,
         pago: 0,
         ativo: true,
-        obs: p === 0 ? obs_val : 'Parcela '+(p+1)+'/'+np,
+        obs: bullet ? (isUltimaParcela ? '🏁 Juros + Capital' : '📅 Só Juros') : (p === 0 ? obs_val : 'Parcela '+(p+1)+'/'+np),
         grupoId: grupoBase
       });
     }
@@ -1020,6 +1061,8 @@ function renderDash() {
     ativos.forEach(function(e){ var v=calcValor(e); if(v>top.val) top={cliente:e.cliente,val:v}; });
 
     // Cards
+    document.getElementById('dash-total-geral').textContent = fmtBRL(totalH);
+    document.getElementById('dash-capital-label').textContent = fmtBRL(totalP);
     document.getElementById('dash-cards').innerHTML =
       '<div class="sc"><div class="sl">💰 Total em aberto</div><div class="sv g">'+fmtBRL(totalH)+'</div><div class="ss">hoje</div></div>'
       +'<div class="sc"><div class="sl">📤 Total emprestado</div><div class="sv">'+fmtBRL(totalP)+'</div><div class="ss">principal</div></div>'
