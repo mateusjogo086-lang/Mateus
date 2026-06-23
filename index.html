@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>MP Empréstimo</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2ecc71">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MP Empréstimo">
+<link rel="apple-touch-icon" href="icon-192.png">
 
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1294,6 +1300,13 @@ function checarNotif() {
       new Notification('MP Empréstimo — '+e.cliente,{body:(dv===0?'⚠️ Vence HOJE!':'⚡ Vence em '+dv+' dia'+(dv>1?'s':''))+' · '+fmtBRL(calcValor(e))});
       localStorage.setItem(chave,'1');
     }
+  });
+}
+
+// ── SERVICE WORKER PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/Mateus/sw.js');
   });
 }
 
