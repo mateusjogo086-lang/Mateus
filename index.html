@@ -326,6 +326,18 @@ function calcValor(e) {
   }
   return valorDiario;
 }
+function totalCapitalUnico(lista) {
+  var vistos = {};
+  return lista.reduce(function(acc, e) {
+    if (e.grupoId) {
+      if (vistos[e.grupoId]) return acc;
+      vistos[e.grupoId] = true;
+      return acc + (e.principalOriginal * (e.parcelaTotal || 1));
+    }
+    return acc + e.principal;
+  }, 0);
+}
+
 function calcValorFinal(e) {
   // Valor final = principal * (1 + taxa/100) para empréstimos normais
   // Para parcelados já tem o valorParcela
@@ -397,7 +409,7 @@ function renderAtivos() {
 
   // Todos os stats referentes ao mês selecionado
   var totalH = doMes.reduce(function(s,e){ return s+calcValor(e); }, 0);
-  var totalP = doMes.reduce(function(s,e){ return s+e.principal; }, 0);
+  var totalP = totalCapitalUnico(doMes);
   var lucro = totalH - totalP;
   var porDia = doMes.reduce(function(s,e){ return s + e.principal*e.taxa/100/30; }, 0);
   var pct = totalP > 0 ? lucro/totalP*100 : 0;
@@ -1065,7 +1077,7 @@ function salvarEmprestimo() {
 function renderDash() {
   try {
     var ativos = emprestimos.filter(function(e){ return e.ativo; });
-    var totalP = ativos.reduce(function(s,e){ return s+e.principal; },0);
+    var totalP = totalCapitalUnico(ativos);
     var totalH = ativos.reduce(function(s,e){ return s+calcValor(e); },0);
     var lucro = totalH-totalP;
     var porDia = ativos.reduce(function(s,e){ return s+e.principal*e.taxa/100/30; },0);
@@ -1101,7 +1113,12 @@ function renderDash() {
     ativos.forEach(function(e){
       var c = getMesChave(e.vencimento);
       if (!grupos[c]) grupos[c]={p:0,l:0,f:0};
-      grupos[c].p += e.principal;
+      // Conta capital só uma vez por grupo de parcelas
+      if (!e.grupoId || !grupos[c].vistos) { grupos[c].vistos = {}; }
+      if (!e.grupoId || !grupos[c].vistos[e.grupoId]) {
+        if (e.grupoId) grupos[c].vistos[e.grupoId] = true;
+        grupos[c].p += e.grupoId ? (e.principalOriginal * (e.parcelaTotal||1)) : e.principal;
+      }
       grupos[c].l += calcValorFinal(e)-e.principal;
       grupos[c].f += calcValorFinal(e);
     });
