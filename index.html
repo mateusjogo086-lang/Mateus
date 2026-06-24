@@ -377,23 +377,6 @@ function renderAtivos() {
   var todosAtivos = emprestimos.filter(function(e){ return e.ativo; });
   var ativos = todosAtivos.filter(function(e){ return e.cliente.toLowerCase().indexOf(busca) >= 0; });
 
-  // Stats usam TODOS os ativos
-  var totalH = todosAtivos.reduce(function(s,e){ return s+calcValor(e); }, 0);
-  var totalP = todosAtivos.reduce(function(s,e){ return s+e.principal; }, 0);
-  var lucro = totalH - totalP;
-  var porDia = todosAtivos.reduce(function(s,e){ return s + e.principal*e.taxa/100/30; }, 0);
-  var pct = totalP > 0 ? lucro/totalP*100 : 0;
-
-  document.getElementById('total-geral').textContent = fmtBRL(totalH);
-  document.getElementById('capital-label').textContent = fmtBRL(totalP);
-  document.getElementById('stat-lucro').textContent = fmtBRL(lucro);
-  document.getElementById('stat-lucro-pct').textContent = pct.toFixed(1)+'% sobre capital';
-  document.getElementById('stat-hoje').textContent = fmtBRL(porDia);
-  document.getElementById('stat-clientes').textContent = todosAtivos.length;
-  document.getElementById('stat-mes').textContent = fmtBRL(porDia*30);
-  document.getElementById('pct-label').textContent = pct.toFixed(1)+'%';
-  document.getElementById('pct-bar').style.width = Math.min(pct*3,100)+'%';
-
   // Inicializa mês se necessário
   if (mesSelecionado === null) iniciarMes();
 
@@ -404,6 +387,23 @@ function renderAtivos() {
 
   // Filtra pelo mês selecionado + busca
   var doMes = ativos.filter(function(e){ return getMesChave(e.vencimento) === mesSelecionado; });
+
+  // Todos os stats referentes ao mês selecionado
+  var totalH = doMes.reduce(function(s,e){ return s+calcValor(e); }, 0);
+  var totalP = doMes.reduce(function(s,e){ return s+e.principal; }, 0);
+  var lucro = totalH - totalP;
+  var porDia = doMes.reduce(function(s,e){ return s + e.principal*e.taxa/100/30; }, 0);
+  var pct = totalP > 0 ? lucro/totalP*100 : 0;
+
+  document.getElementById('total-geral').textContent = fmtBRL(totalH);
+  document.getElementById('capital-label').textContent = fmtBRL(totalP);
+  document.getElementById('stat-lucro').textContent = fmtBRL(lucro);
+  document.getElementById('stat-lucro-pct').textContent = pct.toFixed(1)+'% sobre capital';
+  document.getElementById('stat-hoje').textContent = fmtBRL(porDia);
+  document.getElementById('stat-clientes').textContent = doMes.length;
+  document.getElementById('stat-mes').textContent = fmtBRL(porDia*30);
+  document.getElementById('pct-label').textContent = pct.toFixed(1)+'%';
+  document.getElementById('pct-bar').style.width = Math.min(pct*3,100)+'%';
 
   // Navegador de mês
   var navHtml = '<div style="display:flex;align-items:center;justify-content:space-between;margin:0 16px 10px;background:var(--card);border-radius:12px;border:1px solid var(--border);padding:10px 14px">'
