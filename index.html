@@ -328,14 +328,19 @@ function calcValor(e) {
 }
 function totalCapitalUnico(lista) {
   var vistos = {};
-  return lista.reduce(function(acc, e) {
+  var total = 0;
+  lista.forEach(function(e) {
     if (e.grupoId) {
-      if (vistos[e.grupoId]) return acc;
-      vistos[e.grupoId] = true;
-      return acc + (e.principalOriginal * (e.parcelaTotal || 1));
+      if (!vistos[e.grupoId]) {
+        vistos[e.grupoId] = true;
+        // Usa capitalGrupo se disponível, senão tenta calcular
+        total += e.capitalGrupo || (e.principalOriginal || e.principal);
+      }
+    } else {
+      total += e.principalOriginal || e.principal;
     }
-    return acc + e.principal;
-  }, 0);
+  });
+  return total;
 }
 
 function calcValorFinal(e) {
@@ -1027,6 +1032,7 @@ function salvarEmprestimo() {
     var jurosMensal = val * (tax/100);
     var obs_val = '';
     var grupoBase = nextId;
+    var capitalGrupo = val; // capital real emprestado
     for (var p=0; p<tp.length; p++) {
       // Cada parcela começa a contar juros a partir do vencimento da parcela anterior
       // Parcela 1: inicio = ini (data do empréstimo)
@@ -1057,7 +1063,8 @@ function salvarEmprestimo() {
         pago: 0,
         ativo: true,
         obs: bullet ? (isUltimaParcela ? '🏁 Juros + Capital' : '📅 Só Juros') : (p === 0 ? obs_val : 'Parcela '+(p+1)+'/'+np),
-        grupoId: grupoBase
+        grupoId: grupoBase,
+        capitalGrupo: capitalGrupo
       });
     }
   }
