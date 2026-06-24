@@ -1011,8 +1011,10 @@ function salvarEmprestimo() {
       var inicioParc = p === 0 ? ini : tp[p-1].venc;
       var isUltimaParcela = (p === np - 1);
       var vpBullet = bullet ? (isUltimaParcela ? jurosMensal + val : jurosMensal) : valorParcela;
-      var principalBullet = bullet ? (isUltimaParcela ? val : 0) : principalParcela;
-      var originalBullet = bullet ? (isUltimaParcela ? val : 0) : principalParcela;
+      // Para parcelas bullet: principal sempre é o valor total emprestado
+      // assim os juros são calculados corretamente sobre o capital total
+      var principalBullet = bullet ? val : principalParcela;
+      var originalBullet = bullet ? val : principalParcela;
 
       emprestimos.push({
         id: nextId++,
