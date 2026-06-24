@@ -326,6 +326,13 @@ function calcValor(e) {
   }
   return valorDiario;
 }
+function calcValorFinal(e) {
+  // Valor final = principal * (1 + taxa/100) para empréstimos normais
+  // Para parcelados já tem o valorParcela
+  if (e.valorParcela) return e.valorParcela;
+  return e.principal * (1 + e.taxa/100);
+}
+
 function diasVencer(s) {
   return Math.ceil((new Date(s+'T12:00:00') - hoje()) / 86400000);
 }
@@ -455,7 +462,12 @@ function renderAtivos() {
       +tlHtml
       +obsHtml
       +estornoHtml
-      +'<div class="lvb"><div><div class="vhl">Valor Hoje</div><div class="vh">'+fmtBRL(vh)+'</div><div class="va">Amanhã: '+fmtBRL(va)+'</div></div><div><div class="pdl">Por Dia</div><div class="pd">'+fmtBRL(pd)+'</div></div></div>'
+      +'<div class="lvb"><div><div class="vhl">Valor Hoje</div><div class="vh">'+fmtBRL(vh)+'</div>'
+      +(e.valorParcela ? '' : '<div class="va">Amanhã: '+fmtBRL(va)+'</div>')
+      +'</div>'
+      +(e.valorParcela ? '' : '<div><div class="pdl">Por Dia</div><div class="pd">'+fmtBRL(pd)+'</div></div>')
+      +'</div>'
+      +(e.valorParcela ? '' : '<div style="margin:0 14px 8px;background:rgba(52,152,219,.1);border:1px solid rgba(52,152,219,.3);border-radius:10px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:11px;color:#3498db;text-transform:uppercase;letter-spacing:.5px">💰 Valor Final (30 dias)</div><div style="font-size:15px;font-weight:700;color:#3498db">'+fmtBRL(e.principal*(1+e.taxa/100))+'</div></div>')
       +'<div class="li"><div><div class="il">Emprestado</div><div class="iv">'+fmtBRL(e.principalOriginal||e.principal)+'</div></div><div><div class="il">Já Pago</div><div class="iv" style="color:'+(e.pago>0?'var(--green)':'var(--text)')+'">'+fmtBRL(e.pago||0)+'</div></div><div><div class="il">Taxa</div><div class="iv">'+e.taxa+'%/mês</div></div></div>'
       +'<div class="la"><button class="btn bg" onclick="pagarLoan('+e.id+')">💳 Pagar</button><button class="btn bd" onclick="abrirObs('+e.id+')">📝 Obs</button><button class="btn bd" onclick="editarLoan('+e.id+')">✏️ Editar</button><button class="btn br" onclick="deletarLoan('+e.id+')">🗑️ Deletar</button></div>'
       +'</div>';
@@ -1060,10 +1072,11 @@ function renderDash() {
     var pct = totalP>0 ? lucro/totalP*100 : 0;
 
     var top = {cliente:'—',val:0};
-    ativos.forEach(function(e){ var v=calcValor(e); if(v>top.val) top={cliente:e.cliente,val:v}; });
+    ativos.forEach(function(e){ var v=calcValorFinal(e); if(v>top.val) top={cliente:e.cliente,val:v}; });
+    var totalFinalGeral = ativos.reduce(function(s,e){ return s+calcValorFinal(e); }, 0);
 
     // Cards
-    document.getElementById('dash-total-geral').textContent = fmtBRL(totalH);
+    document.getElementById('dash-total-geral').textContent = fmtBRL(totalFinalGeral);
     document.getElementById('dash-capital-label').textContent = fmtBRL(totalP);
     document.getElementById('dash-cards').innerHTML =
       '<div class="sc"><div class="sl">💰 Total em aberto</div><div class="sv g">'+fmtBRL(totalH)+'</div><div class="ss">hoje</div></div>'
@@ -1087,9 +1100,10 @@ function renderDash() {
     var grupos = {};
     ativos.forEach(function(e){
       var c = getMesChave(e.vencimento);
-      if (!grupos[c]) grupos[c]={p:0,l:0};
+      if (!grupos[c]) grupos[c]={p:0,l:0,f:0};
       grupos[c].p += e.principal;
-      grupos[c].l += calcValor(e)-e.principal;
+      grupos[c].l += calcValorFinal(e)-e.principal;
+      grupos[c].f += calcValorFinal(e);
     });
     var chaves = Object.keys(grupos).sort(function(a,b){return a-b;});
     var labs = chaves.map(function(c){ return MESES[parseInt(c)%100].substring(0,3); });
@@ -1099,10 +1113,14 @@ function renderDash() {
       chaves.map(function(c){return grupos[c].p;}),
       chaves.map(function(c){return grupos[c].l;})
     );
+    // Mostra valor final no título do gráfico
+    var totalFinal = chaves.reduce(function(s,c){return s+grupos[c].f;},0);
+    document.querySelector('.chart-box .chart-title').textContent = '📊 Valor Final por Mês (Total: '+fmtBRL(totalFinal)+')';
+
 
     // Rosca canvas puro
     var cliMap = {};
-    ativos.forEach(function(e){ cliMap[e.cliente]=(cliMap[e.cliente]||0)+calcValor(e); });
+    ativos.forEach(function(e){ cliMap[e.cliente]=(cliMap[e.cliente]||0)+calcValorFinal(e); });
     var dLabs = Object.keys(cliMap);
     var dData = dLabs.map(function(c){return cliMap[c];});
     var COLS = ['#2ecc71','#3498db','#f39c12','#e74c3c','#9b59b6','#1abc9c','#e67e22'];
@@ -1114,6 +1132,7 @@ function renderDash() {
 
     // Linha canvas puro
     drawLineChart('lineChart', labs, chaves.map(function(c){return grupos[c].l;}));
+    // Linha usa lucro final (valorFinal - principal)
 
     // Calendário
     var ag = hoje(); var mA=ag.getMonth(); var aA=ag.getFullYear();
@@ -1123,7 +1142,7 @@ function renderDash() {
     document.getElementById('dash-cal').innerHTML = vencMes.length ? vencMes.map(function(e){
       var dv=diasVencer(e.vencimento);
       var cor=dv<0?'#e74c3c':dv<=5?'#f39c12':'#2ecc71';
-      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:10px"><div style="background:'+cor+';border-radius:8px;padding:4px 8px;font-size:12px;font-weight:700;color:#000;min-width:36px;text-align:center">'+fmtData(e.vencimento).substring(0,5)+'</div><div><div style="font-size:13px;font-weight:600">'+e.cliente+'</div><div style="font-size:11px;color:var(--muted)">'+(dv<0?'Vencido há '+Math.abs(dv)+'d':dv===0?'Vence hoje':'Em '+dv+' dias')+'</div></div></div><div style="font-size:13px;font-weight:700;color:'+cor+'">'+fmtBRL(calcValor(e))+'</div></div>';
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:10px"><div style="background:'+cor+';border-radius:8px;padding:4px 8px;font-size:12px;font-weight:700;color:#000;min-width:36px;text-align:center">'+fmtData(e.vencimento).substring(0,5)+'</div><div><div style="font-size:13px;font-weight:600">'+e.cliente+'</div><div style="font-size:11px;color:var(--muted)">'+(dv<0?'Vencido há '+Math.abs(dv)+'d':dv===0?'Vence hoje':'Em '+dv+' dias')+'</div></div></div><div style="text-align:right"><div style="font-size:13px;font-weight:700;color:'+cor+'">'+fmtBRL(calcValorFinal(e))+'</div><div style="font-size:10px;color:var(--muted)">Hoje: '+fmtBRL(calcValor(e))+'</div></div></div>';
     }).join('') : '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">Nenhum vencimento este mês</div>';
 
   } catch(err) { console.log('Dash erro:', err); }
