@@ -1358,32 +1358,6 @@ if ('serviceWorker' in navigator) {
 // ── INIT
 popularSelect();
 
-// Dados de teste se estiver vazio
-if (emprestimos.length === 0) {
-  clientes = ['Henrique mhnet','Amanda','Marcão','Jessica','Kaynan Sorocaba','Rubins'];
-  emprestimos = [
-    {id:1,principalOriginal:200,cliente:'Henrique mhnet',principal:200,taxa:30,inicio:'2026-06-07',vencimento:'2026-07-07',parcelas:1,parcelaAtual:1,pago:0,ativo:true,obs:''},
-    {id:2,principalOriginal:800,cliente:'Amanda',principal:800,taxa:30,inicio:'2026-06-01',vencimento:'2026-07-01',parcelas:1,parcelaAtual:1,pago:0,ativo:true,obs:'Paga toda semana'},
-    {id:3,principalOriginal:500,cliente:'Marcão',principal:500,taxa:30,inicio:'2026-06-10',vencimento:'2026-07-10',parcelas:2,parcelaAtual:1,pago:0,ativo:true,obs:'',
-      todasParcelas:[
-        {mes:'Julho',venc:'2026-07-10',pago:false},
-        {mes:'Agosto',venc:'2026-08-10',pago:false}
-      ]},
-    {id:4,principalOriginal:136.50,cliente:'Jessica',principal:136.50,taxa:30,inicio:'2026-06-16',vencimento:'2026-07-16',parcelas:1,parcelaAtual:1,pago:0,ativo:true,obs:''},
-    {id:5,principalOriginal:481.25,cliente:'Jessica',principal:481.25,taxa:30,inicio:'2026-06-21',vencimento:'2026-07-21',parcelas:1,parcelaAtual:1,pago:0,ativo:true,obs:''},
-    {id:6,principalOriginal:1400,cliente:'Kaynan Sorocaba',principal:1400,taxa:30,inicio:'2026-06-07',vencimento:'2026-07-07',parcelas:1,parcelaAtual:1,pago:0,ativo:true,obs:''},
-    {id:7,principalOriginal:500,cliente:'Rubins',principal:500,taxa:30,inicio:'2026-06-11',vencimento:'2026-07-11',parcelas:1,parcelaAtual:1,pago:0,ativo:true,obs:'Namorado da Jes'},
-    {id:8,principalOriginal:300,cliente:'Amanda',principal:300,taxa:30,inicio:'2026-06-01',vencimento:'2026-08-01',parcelas:2,parcelaAtual:1,pago:0,ativo:true,obs:'',
-      todasParcelas:[
-        {mes:'Julho',venc:'2026-07-01',pago:false},
-        {mes:'Agosto',venc:'2026-08-01',pago:false}
-      ]},
-  ];
-  nextId = 9;
-  salvar();
-  popularSelect();
-}
-
 renderAtivos();
 setTimeout(renderDash, 100);
 renderQuitados();
