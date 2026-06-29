@@ -138,6 +138,20 @@ input[type="date"]{min-height:44px;color-scheme:dark}
 .chart-box{margin:10px 16px 0;background:var(--card);border-radius:14px;border:1px solid var(--border);padding:16px}
 .chart-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
 .alerta{border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13px}
+/* SOLICITAÇÕES */
+.solic-card{margin:0 16px 10px;background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden}
+.solic-header{padding:12px 14px 8px;display:flex;align-items:center;justify-content:space-between}
+.solic-nome{font-size:16px;font-weight:700}
+.solic-data{font-size:11px;color:var(--muted)}
+.solic-body{padding:0 14px 4px}
+.solic-row{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:13px}
+.solic-row span:first-child{color:var(--muted);font-size:12px;min-width:80px}
+.solic-valor{font-size:20px;font-weight:700;color:var(--green);padding:8px 14px 4px}
+.solic-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 14px 14px}
+.badge{position:relative;display:inline-block}
+.badge-dot{position:absolute;top:-4px;right:-4px;width:16px;height:16px;background:var(--red);border-radius:50%;font-size:9px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
+.badge-dot.hidden{display:none}
+.link-solic-btn{background:rgba(46,204,113,.15);border:1px solid rgba(46,204,113,.3);color:var(--green);border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;margin:0 16px 12px;width:calc(100% - 32px)}
 </style>
 </head>
 <body>
@@ -249,13 +263,22 @@ input[type="date"]{min-height:44px;color-scheme:dark}
   <div class="scroll-area" id="clientes-container" style="padding-top:12px"></div>
 </div>
 
+<!-- TAB SOLICITAÇÕES -->
+<div id="tab-solic" class="tab-content">
+  <div class="header">
+    <div class="app-brand"><div class="app-icon">💰</div><div><div class="app-name">MP Empréstimo</div><div class="app-sub">Solicitações</div></div></div>
+    <button onclick="gerarLinkSolic()" class="link-solic-btn" style="margin:10px 0 0;width:100%">🔗 Gerar link para cliente preencher</button>
+  </div>
+  <div class="scroll-area" id="solic-container" style="padding-top:12px"></div>
+</div>
+
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
   <button class="ni" onclick="switchTab('ativos',this)"><span class="nii">📋</span><span>Ativos</span></button>
   <button class="ni" onclick="switchTab('quitados',this)"><span class="nic">✓</span><span>Quitados</span></button>
   <button class="ni active" onclick="switchTab('dash',this)"><span class="nii">📊</span><span>Dashboard</span></button>
   <button class="ni" onclick="switchTab('novo',this)"><span class="nii">＋</span><span>Novo</span></button>
-  <button class="ni" onclick="switchTab('clientes',this)"><span class="nii">👤</span><span>Clientes</span></button>
+  <button class="ni" onclick="switchTab('solic',this)" id="nav-solic"><span class="badge"><span class="nii">📩</span><span class="badge-dot hidden" id="solic-badge">0</span></span><span>Pedidos</span></button>
 </nav>
 
 <!-- MODAL EDITAR -->
@@ -1365,6 +1388,129 @@ function lerBackup(event) {
   event.target.value = '';
 }
 
+// ── SOLICITAÇÕES
+function carregarSolicitacoes() {
+  try { return JSON.parse(localStorage.getItem('mp_solic') || '[]'); } catch(e){ return []; }
+}
+function salvarSolicitacoes(s) {
+  try { localStorage.setItem('mp_solic', JSON.stringify(s)); } catch(e){}
+}
+
+function atualizarBadgeSolic() {
+  var solic = carregarSolicitacoes();
+  var pendentes = solic.filter(function(s){ return s.status === 'pendente'; }).length;
+  var badge = document.getElementById('solic-badge');
+  if (!badge) return;
+  if (pendentes > 0) {
+    badge.textContent = pendentes;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+function renderSolic() {
+  var cont = document.getElementById('solic-container');
+  if (!cont) return;
+  var solic = carregarSolicitacoes();
+  var pendentes = solic.filter(function(s){ return s.status === 'pendente'; });
+  var outras = solic.filter(function(s){ return s.status !== 'pendente'; });
+
+  if (!solic.length) {
+    cont.innerHTML = '<div class="empty"><div class="empty-i">📩</div>Nenhuma solicitação ainda.<br><small style="font-size:12px;margin-top:6px;display:block">Gere um link e envie para o cliente preencher.</small></div>';
+    return;
+  }
+
+  function renderCard(s) {
+    var dataFmt = new Date(s.data).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    var isPendente = s.status === 'pendente';
+    return '<div class="solic-card" id="solic-'+s.id+'">'
+      +'<div class="solic-header"><div class="solic-nome">'+s.nome+'</div>'
+      +'<div class="solic-data">'+dataFmt+'</div></div>'
+      +'<div class="solic-valor">R$ '+Number(s.valor).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.')+'</div>'
+      +'<div class="solic-body">'
+      +'<div class="solic-row"><span>📍 Endereço</span><span>'+s.endereco+'</span></div>'
+      +'<div class="solic-row"><span>📱 Telefone</span><span>'+s.telefone+'</span></div>'
+      +(s.obs ? '<div class="solic-row"><span>📝 Obs</span><span>'+s.obs+'</span></div>' : '')
+      +'</div>'
+      +(isPendente
+        ? '<div class="solic-btns">'
+          +'<button class="btn bg" onclick="aprovarSolic('+s.id+')">✅ Aprovar</button>'
+          +'<button class="btn br" onclick="recusarSolic('+s.id+')">❌ Recusar</button>'
+          +'</div>'
+        : '<div style="padding:8px 14px 14px;font-size:12px;color:'+(s.status==='aprovado'?'var(--green)':'var(--muted)')+'">'+
+          (s.status==='aprovado'?'✅ Aprovado':'❌ Recusado')+'</div>'
+      )
+      +'</div>';
+  }
+
+  var html = '';
+  if (pendentes.length) {
+    html += '<div class="mh"><span class="mh-l">Pendentes</span><div class="mh-line"></div><span class="mh-c">'+pendentes.length+'</span></div>';
+    pendentes.forEach(function(s){ html += renderCard(s); });
+  }
+  if (outras.length) {
+    html += '<div class="mh"><span class="mh-l">Respondidas</span><div class="mh-line"></div><span class="mh-c">'+outras.length+'</span></div>';
+    outras.slice().reverse().forEach(function(s){ html += renderCard(s); });
+  }
+  cont.innerHTML = html;
+}
+
+function aprovarSolic(id) {
+  var solic = carregarSolicitacoes();
+  var s = solic.find(function(x){ return x.id===id; });
+  if (!s) return;
+
+  // Adiciona o cliente se não existir
+  if (clientes.indexOf(s.nome) < 0) {
+    clientes.push(s.nome);
+    salvar();
+    popularSelect();
+  }
+
+  s.status = 'aprovado';
+  salvarSolicitacoes(solic);
+  atualizarBadgeSolic();
+  renderSolic();
+
+  // Vai pra aba novo com cliente e valor preenchidos
+  mostrarConfirm('✅ Solicitação Aprovada!', 'Cliente "'+s.nome+'" adicionado. Ir para Novo Empréstimo para finalizar?', function(){
+    document.getElementById('f-cliente').value = s.nome;
+    document.getElementById('f-valor').value = s.valor;
+    var hoje2 = new Date().toISOString().split('T')[0];
+    document.getElementById('f-inicio').value = hoje2;
+    switchTab('novo', document.querySelectorAll('.ni')[3]);
+  });
+}
+
+function recusarSolic(id) {
+  var solic = carregarSolicitacoes();
+  var s = solic.find(function(x){ return x.id===id; });
+  if (!s) return;
+  mostrarConfirm('❌ Recusar Solicitação', 'Recusar pedido de '+s.nome+'?', function(){
+    s.status = 'recusado';
+    salvarSolicitacoes(solic);
+    atualizarBadgeSolic();
+    renderSolic();
+  });
+}
+
+function gerarLinkSolic() {
+  // Link relativo para solicitacao.html na mesma pasta
+  var base = window.location.href.replace(/\/[^\/]*$/, '/');
+  var link = base + 'solicitacao.html';
+  if (navigator.share) {
+    navigator.share({ title: 'Solicitar Empréstimo', text: '💰 Preencha seus dados para solicitar um empréstimo:', url: link });
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(link).then(function(){ alert('✅ Link copiado!\n\nEnvie esse link para o cliente:\n'+link); });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = link; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    alert('✅ Link copiado!\n\nEnvie para o cliente preencher os dados.');
+  }
+}
+
 // ── NAV
 function switchTab(tab, el) {
   document.querySelectorAll('.tab-content').forEach(function(t){ t.classList.remove('active'); });
@@ -1373,6 +1519,8 @@ function switchTab(tab, el) {
   el.classList.add('active');
   if (tab==='dash') setTimeout(renderDash, 100);
   if (tab==='quitados') renderQuitados();
+  if (tab==='solic') renderSolic();
+  if (tab==='clientes') renderClientes();
 }
 
 // ── NOTIFICAÇÕES
@@ -1400,13 +1548,14 @@ if ('serviceWorker' in navigator) {
 
 // ── INIT
 popularSelect();
-
 renderAtivos();
 setTimeout(renderDash, 100);
 renderQuitados();
 pedirNotif();
 checarNotif();
+atualizarBadgeSolic();
 setInterval(checarNotif, 3600000);
+setInterval(atualizarBadgeSolic, 10000);
 </script>
 <!-- MODAL CONFIRM -->
 <div id="modal-confirm" class="modal">
