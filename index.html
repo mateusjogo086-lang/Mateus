@@ -956,11 +956,47 @@ function renderClientes() {
   if (!cont) return;
   var html = '';
   clientes.forEach(function(c,i){
-    var at = emprestimos.filter(function(e){ return e.cliente===c && e.ativo; });
-    var tv = at.reduce(function(s,e){ return s+calcValor(e); }, 0);
-    html += '<div class="ci"><div><div class="cn">'+c+'</div><div class="cs">'+at.length+' ativo'+(at.length!=1?'s':'')+(at.length?' · '+fmtBRL(tv):'')+'</div></div>'
-      +'<div style="display:flex;gap:6px;align-items:center"><div class="cb '+(at.length?'ba':'bi')+'">'+(at.length?'Ativo':'Inativo')+'</div>'
-      +'<button onclick="removerCliente('+i+')" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer">🗑️</button></div></div>';
+    var ativos = emprestimos.filter(function(e){ return e.cliente===c && e.ativo; });
+    var quitados2 = emprestimos.filter(function(e){ return e.cliente===c && !e.ativo; });
+    var totalAberto = ativos.reduce(function(s,e){ return s+calcValor(e); }, 0);
+    var totalEmprestado = totalCapitalUnico(ativos);
+    var totalQuitado = quitados2.reduce(function(s,e){ return s+(e.pago||0); }, 0);
+    var totalHistorico = totalEmprestado + totalQuitado;
+    var temAtivo = ativos.length > 0;
+
+    html += '<div style="margin:0 16px 10px;background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden">'
+      // cabeçalho
+      +'<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px">'
+      +'<div style="font-size:17px;font-weight:700">'+c+'</div>'
+      +'<div style="display:flex;gap:6px;align-items:center">'
+      +'<div class="cb '+(temAtivo?'ba':'bi')+'">'+(temAtivo?'Ativo':'Inativo')+'</div>'
+      +'<button onclick="removerCliente('+i+')" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer">🗑️</button>'
+      +'</div></div>';
+
+    if (temAtivo) {
+      // Valor em aberto destacado
+      html += '<div style="margin:0 14px 8px;background:linear-gradient(135deg,#0d2818,#152a1e);border-radius:12px;padding:12px 14px;border:1px solid rgba(46,204,113,.2);display:flex;justify-content:space-between;align-items:center">'
+        +'<div><div style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:.5px">Em aberto hoje</div>'
+        +'<div style="font-size:22px;font-weight:700;color:var(--green)">'+fmtBRL(totalAberto)+'</div></div>'
+        +'<div style="text-align:right"><div style="font-size:10px;color:var(--muted)">Emprestado</div>'
+        +'<div style="font-size:15px;font-weight:700">'+fmtBRL(totalEmprestado)+'</div></div>'
+        +'</div>';
+
+      // Info de empréstimos ativos
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:4px 14px 10px;gap:6px">'
+        +'<div style="background:var(--card2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:10px;color:var(--muted)">Ativos</div><div style="font-size:15px;font-weight:700">'+ativos.length+'</div></div>'
+        +'<div style="background:var(--card2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:10px;color:var(--muted)">Quitados</div><div style="font-size:15px;font-weight:700">'+quitados2.length+'</div></div>'
+        +'<div style="background:var(--card2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:10px;color:var(--muted)">Total histórico</div><div style="font-size:13px;font-weight:700;color:var(--green)">'+fmtBRL(totalHistorico)+'</div></div>'
+        +'</div>';
+    } else {
+      // Sem ativo — só histórico
+      html += '<div style="padding:4px 14px 12px;display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+        +'<div style="background:var(--card2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:10px;color:var(--muted)">Quitados</div><div style="font-size:15px;font-weight:700">'+quitados2.length+'</div></div>'
+        +'<div style="background:var(--card2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:10px;color:var(--muted)">Total pago</div><div style="font-size:14px;font-weight:700;color:var(--green)">'+fmtBRL(totalQuitado)+'</div></div>'
+        +'</div>';
+    }
+
+    html += '</div>';
   });
   cont.innerHTML = html || '<div class="empty"><div class="empty-i">👤</div>Nenhum cliente.</div>';
 }
@@ -1431,6 +1467,7 @@ function renderSolic() {
       +'<div class="solic-body">'
       +'<div class="solic-row"><span>📍 Endereço</span><span>'+s.endereco+'</span></div>'
       +'<div class="solic-row"><span>📱 Telefone</span><span>'+s.telefone+'</span></div>'
+      +'<div class="solic-row"><span>💳 PIX</span><span style="color:var(--green);font-weight:600">'+( s.pix || '—' )+'</span></div>'
       +(s.obs ? '<div class="solic-row"><span>📝 Obs</span><span>'+s.obs+'</span></div>' : '')
       +'</div>'
       +(isPendente
