@@ -993,7 +993,8 @@ function checarNotif(){
 }
 
 // ── PWA
-if('serviceWorker'in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/Mateus/sw.js');});}
+// Desregistra service workers antigos que causam travamento
+if('serviceWorker'in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.unregister();});});}
 
 // ── PEDIDOS
 var pedidos = [];
