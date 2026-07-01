@@ -235,28 +235,14 @@ input[type="date"]{min-height:44px;color-scheme:dark}
   <div class="scroll-area" id="clientes-container" style="padding-top:12px"></div>
 </div>
 
-<!-- TAB PEDIDOS -->
-<div id="tab-pedidos" class="tab-content">
-  <div class="header">
-    <div class="app-brand"><div class="app-icon">💰</div><div><div class="app-name">MP Empréstimo</div><div class="app-sub">Pedidos de empréstimo</div></div></div>
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button onclick="copiarLinkPedido()" style="flex:1;background:var(--green);color:#000;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">🔗 Copiar link de pedido</button>
-      <button onclick="limparPedidos()" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:13px;color:var(--muted);cursor:pointer">🗑️</button>
-    </div>
-  </div>
-  <div class="scroll-area" id="pedidos-container">
-    <div class="empty"><div class="empty-i">📨</div>Nenhum pedido ainda.<br><span style="font-size:12px;margin-top:8px;display:block">Envie o link para seus clientes solicitarem empréstimos.</span></div>
-  </div>
-</div>
-
 <!-- BOTTOM NAV -->
-<nav class="bottom-nav" style="grid-template-columns:repeat(6,1fr)">
+<nav class="bottom-nav" style="grid-template-columns:repeat(5,1fr)">
   <button class="ni active" onclick="switchTab('ativos',this)"><span class="nii">📋</span><span>Ativos</span></button>
   <button class="ni" onclick="switchTab('quitados',this)"><span class="nic">✓</span><span>Quitados</span></button>
   <button class="ni" onclick="switchTab('dash',this)"><span class="nii">📊</span><span>Dashboard</span></button>
   <button class="ni" onclick="switchTab('novo',this)"><span class="nii">＋</span><span>Novo</span></button>
   <button class="ni" onclick="switchTab('clientes',this)"><span class="nii">👤</span><span>Clientes</span></button>
-  <button class="ni" id="nav-pedidos" onclick="switchTab('pedidos',this)"><span class="nii">📨</span><span>Pedidos</span><span id="badge-pedidos" style="display:none;background:#e74c3c;color:#fff;border-radius:10px;font-size:9px;padding:1px 5px;margin-top:-2px">0</span></button>
+
 </nav>
 
 <!-- MODAL EDITAR -->
@@ -976,8 +962,7 @@ function switchTab(tab,el) {
   el.classList.add('active');
   if(tab==='dash') setTimeout(renderDash,100);
   if(tab==='quitados') renderQuitados();
-  if(tab==='pedidos') renderPedidos();
-}
+
 
 // ── NOTIFICAÇÕES
 function pedirNotif(){if('Notification'in window&&Notification.permission==='default')Notification.requestPermission();}
@@ -996,126 +981,14 @@ function checarNotif(){
 // Desregistra service workers antigos que causam travamento
 if('serviceWorker'in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.unregister();});});}
 
-// ── PEDIDOS
-var pedidos = [];
-try { pedidos = JSON.parse(localStorage.getItem('mp_pedidos') || '[]'); } catch(e) { pedidos = []; }
-
-function salvarPedidos() {
-  try { localStorage.setItem('mp_pedidos', JSON.stringify(pedidos)); } catch(e) {}
-}
-
-function renderPedidos() {
-  var cont = document.getElementById('pedidos-container');
-  var badge = document.getElementById('badge-pedidos');
-  if (!cont) return;
-  var pendentes = pedidos.filter(function(p){ return p.status === 'pendente'; });
-  if (badge) {
-    if (pendentes.length > 0) { badge.style.display = 'block'; badge.textContent = pendentes.length; }
-    else { badge.style.display = 'none'; }
-  }
-  if (!pedidos.length) {
-    cont.innerHTML = '<div class="empty"><div class="empty-i">📨</div>Nenhum pedido ainda.<br><span style="font-size:12px;margin-top:8px;display:block">Envie o link para seus clientes solicitarem empréstimos.</span></div>';
-    return;
-  }
-  var html = '';
-  // Pendentes primeiro
-  var todos = pedidos.slice().sort(function(a,b){ return (a.status==='pendente'?0:1)-(b.status==='pendente'?0:1) || new Date(b.data)-new Date(a.data); });
-  todos.forEach(function(p) {
-    var cor = p.status==='pendente'?'var(--yellow)':p.status==='aprovado'?'var(--green)':'var(--red)';
-    var icon = p.status==='pendente'?'⏳':p.status==='aprovado'?'✅':'❌';
-    html += '<div class="lc">'
-      + '<div class="lh"><div class="ln">'+p.nome+'</div><div style="font-size:12px;font-weight:600;color:'+cor+'">'+icon+' '+p.status.charAt(0).toUpperCase()+p.status.slice(1)+'</div></div>'
-      + '<div class="dr">'
-      + '<div class="dc"><span class="dcl">💰 Valor:</span><span class="dcv">'+fmtBRL(p.valor)+'</span></div>'
-      + '<div class="dc"><span class="dcl">📅 Prazo:</span><span class="dcv">'+p.prazo+' mês(es)</span></div>'
-      + '</div>'
-      + '<div class="dr">'
-      + '<div class="dc"><span class="dcl">📱 WhatsApp:</span><span class="dcv">'+p.telefone+'</span></div>'
-      + (p.pix?'<div class="dc"><span class="dcl">💳 PIX:</span><span class="dcv">'+p.pix+'</span></div>':'')
-      + '</div>'
-      + (p.obs?'<div class="obs-txt">📝 '+p.obs+'</div>':'')
-      + '<div style="font-size:11px;color:var(--muted);padding:0 14px 8px">'+new Date(p.data).toLocaleString('pt-BR')+'</div>'
-      + (p.status==='pendente'?'<div class="la">'
-        + '<button class="btn bg" onclick="aprovarPedido(\''+p.id+'\')">✅ Aprovar</button>'
-        + '<button class="btn br" onclick="recusarPedido(\''+p.id+'\')">❌ Recusar</button>'
-        + '</div>':'')
-      + '</div>';
-  });
-  cont.innerHTML = html;
-}
-
-function aprovarPedido(id) {
-  var p = pedidos.find(function(x){ return x.id===id; });
-  if (!p) return;
-  // Pré-preenche o formulário de novo empréstimo
-  p.status = 'aprovado';
-  salvarPedidos();
-  renderPedidos();
-  // Vai para aba Novo com dados preenchidos
-  switchTab('novo', document.querySelectorAll('.ni')[3]);
-  setTimeout(function(){
-    // Adiciona cliente se não existir
-    if (clientes.indexOf(p.nome) < 0) { clientes.push(p.nome); salvar(); popularSelect(); }
-    document.getElementById('f-cliente').value = p.nome;
-    document.getElementById('f-valor').value = p.valor;
-    document.getElementById('f-taxa').value = p.taxa;
-    atualizarPreview();
-    mostrarConfirm('✅ Pedido aprovado!', 'Dados preenchidos! Preencha a data de início e vencimento para finalizar.', function(){});
-  }, 200);
-}
-
-function recusarPedido(id) {
-  var p = pedidos.find(function(x){ return x.id===id; });
-  if (!p) return;
-  mostrarConfirm('❌ Recusar Pedido', 'Recusar pedido de '+p.nome+' ('+fmtBRL(p.valor)+')?', function(){
-    p.status = 'recusado';
-    salvarPedidos();
-    renderPedidos();
-  });
-}
-
-function limparPedidos() {
-  mostrarConfirm('🗑️ Limpar Pedidos', 'Remover todos os pedidos aprovados e recusados?', function(){
-    pedidos = pedidos.filter(function(p){ return p.status === 'pendente'; });
-    salvarPedidos();
-    renderPedidos();
-  });
-}
-
-function copiarLinkPedido() {
-  var link = 'https://mateusjogo086-lang.github.io/Mateus/pedido.html';
-  if (navigator.share) {
-    navigator.share({ title: 'Solicitar Empréstimo', text: '💰 Solicite seu empréstimo aqui:', url: link });
-  } else if (navigator.clipboard) {
-    navigator.clipboard.writeText(link).then(function(){ alert('Link copiado! Envie para o cliente ✅'); });
-  } else {
-    var ta = document.createElement('textarea'); ta.value = link;
-    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-    alert('Link copiado! ✅');
-  }
-}
-
-// Verifica novos pedidos a cada 30 segundos
-function verificarNovoPedidos() {
-  try {
-    var novos = JSON.parse(localStorage.getItem('mp_pedidos') || '[]');
-    if (novos.length !== pedidos.length) {
-      pedidos = novos;
-      renderPedidos();
-    }
-  } catch(e) {}
-}
-
 // ── INIT
 popularSelect();
 renderAtivos();
 renderQuitados();
-renderPedidos();
 setTimeout(renderDash,300);
 pedirNotif();
 checarNotif();
 setInterval(checarNotif,3600000);
-setInterval(verificarNovoPedidos,30000);
 </script>
 
 <!-- MODAL CONFIRM -->
