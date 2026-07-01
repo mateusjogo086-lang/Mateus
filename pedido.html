@@ -43,8 +43,7 @@ textarea{resize:none;height:80px}
 
   <div id="form-area">
     <div class="info-box">
-      ℹ️ Preencha o formulário com seus dados. Entraremos em contato para confirmar o empréstimo.<br><br>
-      <strong>PIX:</strong> 40161279805
+      ℹ️ Preencha o formulário com seus dados. Entraremos em contato para confirmar o empréstimo e enviar o dinheiro via PIX.
     </div>
 
     <div class="card">
@@ -82,6 +81,11 @@ textarea{resize:none;height:80px}
         <label class="fl">Taxa de Juros</label>
         <input type="text" value="30% ao mês" disabled style="color:var(--green);font-weight:600;opacity:1">
         <input type="hidden" id="p-taxa" value="30">
+      </div>
+      <div class="fg">
+        <label class="fl">Seu PIX (para receber o empréstimo) *</label>
+        <input type="text" id="p-pix" placeholder="CPF, telefone, e-mail ou chave aleatória">
+        <div class="error-msg" id="err-pix">Informe seu PIX</div>
       </div>
       <div class="fg">
         <label class="fl">Observação (opcional)</label>
@@ -136,7 +140,8 @@ function enviarPedido() {
   var tel = document.getElementById('p-telefone').value.trim();
   var valor = parseFloat(document.getElementById('p-valor').value)||0;
   var prazo = parseInt(document.getElementById('p-prazo').value)||1;
-  var taxa = parseFloat(document.getElementById('p-taxa').value)||30;
+  var taxa = 30;
+  var pix = document.getElementById('p-pix').value.trim();
   var obs = document.getElementById('p-obs').value.trim();
 
   // Validação
@@ -147,28 +152,35 @@ function enviarPedido() {
   else { document.getElementById('err-tel').style.display='none'; }
   if (!valor||valor<=0) { document.getElementById('err-valor').style.display='block'; ok=false; }
   else { document.getElementById('err-valor').style.display='none'; }
+  if (!pix) { document.getElementById('err-pix').style.display='block'; ok=false; }
+  else { document.getElementById('err-pix').style.display='none'; }
   if (!ok) return;
 
-  // Salva no localStorage (mesmo domínio)
-  try {
-    var pedidos = JSON.parse(localStorage.getItem('mp_pedidos')||'[]');
-    pedidos.unshift({
-      id: Date.now().toString(),
-      nome: nome,
-      telefone: tel,
-      valor: valor,
-      prazo: prazo,
-      taxa: taxa,
-      obs: obs,
-      status: 'pendente',
-      data: new Date().toISOString()
-    });
-    localStorage.setItem('mp_pedidos', JSON.stringify(pedidos));
-  } catch(e) {}
+  var juros = valor*(taxa/100)*prazo;
+  var total = valor+juros;
 
-  // Mostra sucesso
+  // Monta mensagem para WhatsApp
+  var msg = '💰 *NOVO PEDIDO DE EMPRÉSTIMO*'
+    + '\n\n👤 *Nome:* ' + nome
+    + '\n📱 *WhatsApp:* ' + tel
+    + '\n💳 *PIX:* ' + pix
+    + '\n\n💵 *Valor desejado:* R$ ' + valor.toFixed(2).replace('.',',')
+    + '\n📅 *Prazo:* ' + prazo + ' mês(es)'
+    + '\n📈 *Taxa:* ' + taxa + '% ao mês'
+    + '\n💰 *Total a pagar:* R$ ' + total.toFixed(2).replace('.',',')
+    + (obs ? '\n\n📝 *Obs:* ' + obs : '')
+    + '\n\n_Pedido enviado pelo app MP Empréstimo_';
+
+  // Envia para seu WhatsApp (40161279805)
+  var url = 'https://wa.me/5540161279805?text=' + encodeURIComponent(msg);
+  
+  // Mostra sucesso e abre WhatsApp
   document.getElementById('form-area').style.display='none';
   document.getElementById('success-area').style.display='block';
+  
+  setTimeout(function(){
+    window.open(url, '_blank');
+  }, 500);
 }
 </script>
 </body>
