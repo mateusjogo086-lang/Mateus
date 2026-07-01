@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Solicitar Empréstimo</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--card:#161b22;--card2:#1c2430;--green:#2ecc71;--gd:#27ae60;--text:#e6edf3;--muted:#8b949e;--border:#30363d;--red:#e74c3c}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:20px}
+.container{max-width:440px;margin:0 auto}
+.header{text-align:center;padding:30px 0 24px}
+.logo{width:64px;height:64px;background:var(--gd);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 12px}
+.title{font-size:22px;font-weight:700;margin-bottom:4px}
+.sub{font-size:14px;color:var(--muted)}
+.card{background:var(--card);border-radius:16px;border:1px solid var(--border);padding:20px;margin-bottom:16px}
+.card-title{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:16px}
+.fg{margin-bottom:14px}
+.fl{font-size:12px;color:var(--muted);margin-bottom:6px;display:block}
+input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;padding:12px 14px;outline:none;appearance:none;-webkit-appearance:none;font-family:inherit}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b949e' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+input:focus,select:focus,textarea:focus{border-color:var(--green)}
+input::placeholder,textarea::placeholder{color:var(--muted)}
+textarea{resize:none;height:80px}
+.btn-enviar{width:100%;background:var(--green);color:#000;border:none;border-radius:12px;padding:16px;font-size:16px;font-weight:700;cursor:pointer;margin-top:8px}
+.btn-enviar:active{background:var(--gd)}
+.info-box{background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.2);border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;color:var(--muted);line-height:1.6}
+.info-box strong{color:var(--green)}
+.success{display:none;text-align:center;padding:40px 20px}
+.success-icon{font-size:64px;margin-bottom:16px}
+.success-title{font-size:22px;font-weight:700;margin-bottom:8px;color:var(--green)}
+.success-sub{font-size:14px;color:var(--muted);line-height:1.6}
+.error-msg{color:var(--red);font-size:12px;margin-top:4px;display:none}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="logo">💰</div>
+    <div class="title">Solicitar Empréstimo</div>
+    <div class="sub">Preencha os dados abaixo e aguarde nossa resposta</div>
+  </div>
+
+  <div id="form-area">
+    <div class="info-box">
+      ℹ️ Preencha o formulário com seus dados. Entraremos em contato para confirmar o empréstimo.<br><br>
+      <strong>PIX:</strong> 40161279805
+    </div>
+
+    <div class="card">
+      <div class="card-title">Seus Dados</div>
+      <div class="fg">
+        <label class="fl">Nome Completo *</label>
+        <input type="text" id="p-nome" placeholder="Seu nome completo">
+        <div class="error-msg" id="err-nome">Informe seu nome</div>
+      </div>
+      <div class="fg">
+        <label class="fl">WhatsApp *</label>
+        <input type="tel" id="p-telefone" placeholder="(11) 99999-9999">
+        <div class="error-msg" id="err-tel">Informe seu WhatsApp</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Dados do Empréstimo</div>
+      <div class="fg">
+        <label class="fl">Valor Desejado (R$) *</label>
+        <input type="number" id="p-valor" placeholder="0,00">
+        <div class="error-msg" id="err-valor">Informe o valor</div>
+      </div>
+      <div class="fg">
+        <label class="fl">Prazo (meses)</label>
+        <select id="p-prazo">
+          <option value="1">1 mês</option>
+          <option value="2">2 meses</option>
+          <option value="3">3 meses</option>
+          <option value="4">4 meses</option>
+          <option value="6">6 meses</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">Taxa de Juros</label>
+        <input type="text" value="30% ao mês" disabled style="color:var(--green);font-weight:600;opacity:1">
+        <input type="hidden" id="p-taxa" value="30">
+      </div>
+      <div class="fg">
+        <label class="fl">Observação (opcional)</label>
+        <textarea id="p-obs" placeholder="Alguma informação adicional..."></textarea>
+      </div>
+    </div>
+
+    <div id="resumo-box" style="display:none;background:#0d2818;border:1px solid rgba(46,204,113,.3);border-radius:12px;padding:14px;margin-bottom:16px">
+      <div style="font-size:11px;color:#2ecc71;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📊 Resumo do Pedido</div>
+      <div id="resumo-content" style="font-size:14px;line-height:2;color:#e6edf3"></div>
+    </div>
+
+    <button class="btn-enviar" onclick="enviarPedido()">📤 Enviar Pedido</button>
+    <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:12px">Seus dados são usados apenas para análise do empréstimo</div>
+  </div>
+
+  <div class="success" id="success-area">
+    <div class="success-icon">✅</div>
+    <div class="success-title">Pedido Enviado!</div>
+    <div class="success-sub">Seu pedido foi enviado com sucesso.<br>Aguarde nosso contato pelo WhatsApp em breve.<br><br><strong style="color:var(--green)">Obrigado pela confiança!</strong></div>
+  </div>
+</div>
+
+<script>
+function fmtBRL(n){return 'R$ '+Number(n).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
+
+// Atualiza resumo em tempo real
+['p-valor','p-prazo','p-taxa'].forEach(function(id){
+  document.getElementById(id).addEventListener('input', atualizarResumo);
+  document.getElementById(id).addEventListener('change', atualizarResumo);
+});
+
+function atualizarResumo() {
+  var valor = parseFloat(document.getElementById('p-valor').value)||0;
+  var prazo = parseInt(document.getElementById('p-prazo').value)||1;
+  var taxa = parseFloat(document.getElementById('p-taxa').value)||30;
+  var box = document.getElementById('resumo-box');
+  if (!valor) { box.style.display='none'; return; }
+  var juros = valor*(taxa/100)*prazo;
+  var total = valor+juros;
+  var parcMensal = total/prazo;
+  box.style.display='block';
+  document.getElementById('resumo-content').innerHTML =
+    '💵 Valor: <strong>'+fmtBRL(valor)+'</strong><br>'
+    +'📈 Taxa: <strong>'+taxa+'%/mês × '+prazo+' mês(es)</strong><br>'
+    +'💰 Total a pagar: <strong style="color:var(--green)">'+fmtBRL(total)+'</strong><br>'
+    +(prazo>1?'📅 Por mês: <strong>'+fmtBRL(parcMensal)+'</strong>':'');
+}
+
+function enviarPedido() {
+  var nome = document.getElementById('p-nome').value.trim();
+  var tel = document.getElementById('p-telefone').value.trim();
+  var valor = parseFloat(document.getElementById('p-valor').value)||0;
+  var prazo = parseInt(document.getElementById('p-prazo').value)||1;
+  var taxa = parseFloat(document.getElementById('p-taxa').value)||30;
+  var obs = document.getElementById('p-obs').value.trim();
+
+  // Validação
+  var ok = true;
+  if (!nome) { document.getElementById('err-nome').style.display='block'; ok=false; } 
+  else { document.getElementById('err-nome').style.display='none'; }
+  if (!tel) { document.getElementById('err-tel').style.display='block'; ok=false; }
+  else { document.getElementById('err-tel').style.display='none'; }
+  if (!valor||valor<=0) { document.getElementById('err-valor').style.display='block'; ok=false; }
+  else { document.getElementById('err-valor').style.display='none'; }
+  if (!ok) return;
+
+  // Salva no localStorage (mesmo domínio)
+  try {
+    var pedidos = JSON.parse(localStorage.getItem('mp_pedidos')||'[]');
+    pedidos.unshift({
+      id: Date.now().toString(),
+      nome: nome,
+      telefone: tel,
+      valor: valor,
+      prazo: prazo,
+      taxa: taxa,
+      obs: obs,
+      status: 'pendente',
+      data: new Date().toISOString()
+    });
+    localStorage.setItem('mp_pedidos', JSON.stringify(pedidos));
+  } catch(e) {}
+
+  // Mostra sucesso
+  document.getElementById('form-area').style.display='none';
+  document.getElementById('success-area').style.display='block';
+}
+</script>
+</body>
+</html>
