@@ -992,7 +992,7 @@ function checarNotif(){
   });
 }
 
-// ── PWA
+// PWA
 // Desregistra service workers antigos que causam travamento
 if('serviceWorker'in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.unregister();});});}
 
@@ -1033,8 +1033,8 @@ function renderPedidos() {
       + (p.obs?'<div class="obs-txt">📝 '+p.obs+'</div>':'')
       + '<div style="font-size:11px;color:var(--muted);padding:0 14px 8px">'+new Date(p.data).toLocaleString('pt-BR')+'</div>'
       + (p.status==='pendente'?'<div class="la">'
-        + '<button class="btn bg" onclick="aprovarPedido(''+p.id+'')">✅ Aprovar</button>'
-        + '<button class="btn br" onclick="recusarPedido(''+p.id+'')">❌ Recusar</button>'
+        + '<button class="btn bg" onclick="aprovarPedido(\''+p.id+'\')">✅ Aprovar</button>'
+        + '<button class="btn br" onclick="recusarPedido(\''+p.id+'\')">❌ Recusar</button>'
         + '</div>':'')
       + '</div>';
   });
