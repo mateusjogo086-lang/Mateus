@@ -1027,9 +1027,12 @@ function renderPedidos() {
       + '<div class="lh"><div class="ln">'+p.nome+'</div><div style="font-size:12px;font-weight:600;color:'+cor+'">'+icon+' '+p.status.charAt(0).toUpperCase()+p.status.slice(1)+'</div></div>'
       + '<div class="dr">'
       + '<div class="dc"><span class="dcl">💰 Valor:</span><span class="dcv">'+fmtBRL(p.valor)+'</span></div>'
-      + '<div class="dc"><span class="dcl">📅 Taxa:</span><span class="dcv">'+p.taxa+'%/mês</span></div>'
+      + '<div class="dc"><span class="dcl">📅 Prazo:</span><span class="dcv">'+p.prazo+' mês(es)</span></div>'
       + '</div>'
-      + (p.prazo?'<div class="dr"><div class="dc"><span class="dcl">🗓️ Prazo:</span><span class="dcv">'+p.prazo+' mês(es)</span></div></div>':'')
+      + '<div class="dr">'
+      + '<div class="dc"><span class="dcl">📱 WhatsApp:</span><span class="dcv">'+p.telefone+'</span></div>'
+      + (p.pix?'<div class="dc"><span class="dcl">💳 PIX:</span><span class="dcv">'+p.pix+'</span></div>':'')
+      + '</div>'
       + (p.obs?'<div class="obs-txt">📝 '+p.obs+'</div>':'')
       + '<div style="font-size:11px;color:var(--muted);padding:0 14px 8px">'+new Date(p.data).toLocaleString('pt-BR')+'</div>'
       + (p.status==='pendente'?'<div class="la">'

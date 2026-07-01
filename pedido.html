@@ -141,46 +141,41 @@ function enviarPedido() {
   var valor = parseFloat(document.getElementById('p-valor').value)||0;
   var prazo = parseInt(document.getElementById('p-prazo').value)||1;
   var taxa = 30;
+function enviarPedido() {
+  var nome = document.getElementById('p-nome').value.trim();
+  var tel = document.getElementById('p-telefone').value.trim();
+  var valor = parseFloat(document.getElementById('p-valor').value)||0;
+  var prazo = parseInt(document.getElementById('p-prazo').value)||1;
+  var taxa = 30;
   var pix = document.getElementById('p-pix').value.trim();
   var obs = document.getElementById('p-obs').value.trim();
 
-  // Validação
   var ok = true;
-  if (!nome) { document.getElementById('err-nome').style.display='block'; ok=false; } 
-  else { document.getElementById('err-nome').style.display='none'; }
-  if (!tel) { document.getElementById('err-tel').style.display='block'; ok=false; }
-  else { document.getElementById('err-tel').style.display='none'; }
-  if (!valor||valor<=0) { document.getElementById('err-valor').style.display='block'; ok=false; }
-  else { document.getElementById('err-valor').style.display='none'; }
-  if (!pix) { document.getElementById('err-pix').style.display='block'; ok=false; }
-  else { document.getElementById('err-pix').style.display='none'; }
+  if (!nome){document.getElementById('err-nome').style.display='block';ok=false;}else{document.getElementById('err-nome').style.display='none';}
+  if (!tel){document.getElementById('err-tel').style.display='block';ok=false;}else{document.getElementById('err-tel').style.display='none';}
+  if (!valor||valor<=0){document.getElementById('err-valor').style.display='block';ok=false;}else{document.getElementById('err-valor').style.display='none';}
+  if (!pix){document.getElementById('err-pix').style.display='block';ok=false;}else{document.getElementById('err-pix').style.display='none';}
   if (!ok) return;
 
-  var juros = valor*(taxa/100)*prazo;
-  var total = valor+juros;
+  try {
+    var pedidos = JSON.parse(localStorage.getItem('mp_pedidos')||'[]');
+    pedidos.unshift({
+      id: Date.now().toString(),
+      nome: nome,
+      telefone: tel,
+      pix: pix,
+      valor: valor,
+      prazo: prazo,
+      taxa: taxa,
+      obs: obs,
+      status: 'pendente',
+      data: new Date().toISOString()
+    });
+    localStorage.setItem('mp_pedidos', JSON.stringify(pedidos));
+  } catch(e) {}
 
-  // Monta mensagem para WhatsApp
-  var msg = '💰 *NOVO PEDIDO DE EMPRÉSTIMO*'
-    + '\n\n👤 *Nome:* ' + nome
-    + '\n📱 *WhatsApp:* ' + tel
-    + '\n💳 *PIX:* ' + pix
-    + '\n\n💵 *Valor desejado:* R$ ' + valor.toFixed(2).replace('.',',')
-    + '\n📅 *Prazo:* ' + prazo + ' mês(es)'
-    + '\n📈 *Taxa:* ' + taxa + '% ao mês'
-    + '\n💰 *Total a pagar:* R$ ' + total.toFixed(2).replace('.',',')
-    + (obs ? '\n\n📝 *Obs:* ' + obs : '')
-    + '\n\n_Pedido enviado pelo app MP Empréstimo_';
-
-  // Envia para seu WhatsApp (40161279805)
-  var url = 'https://wa.me/5540161279805?text=' + encodeURIComponent(msg);
-  
-  // Mostra sucesso e abre WhatsApp
   document.getElementById('form-area').style.display='none';
   document.getElementById('success-area').style.display='block';
-  
-  setTimeout(function(){
-    window.open(url, '_blank');
-  }, 500);
 }
 </script>
 </body>
