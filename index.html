@@ -680,34 +680,39 @@ function copiarLink(id) {
     +'<div style="font-size:11px;color:#8b949e;margin-bottom:4px">💳 PIX para pagamento</div>'
     +'<div style="font-size:16px;font-weight:700;color:#2ecc71">40161279805</div>'
     +'</div>'
-    +'<button onclick="enviarLinkConsulta(\''+e.cliente+'\')" style="width:100%;margin-top:14px;background:#25d366;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer">🔗 Enviar link para o cliente</button>';
+    +'<button onclick="enviarLinkConsulta(\''+e.cliente+'\')" style="width:100%;margin-top:14px;background:#25d366;color:#fff;border:none;border-radius:12px;padding:16px;font-size:15px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation">🔗 Enviar link para o cliente</button>';
 
   document.getElementById('consulta-body').innerHTML=html;
   document.getElementById('modal-consulta').classList.add('open');
 }
 
-function compartilharExtrato(nomeCliente) {
-  var todos=emprestimos.filter(function(x){return x.ativo&&x.cliente===nomeCliente;});
-  todos.sort(function(a,b){return new Date(a.vencimento)-new Date(b.vencimento);});
-  var totalHoje=todos.reduce(function(s,x){return s+calcValor(x);},0);
-  var porDia=todos.reduce(function(s,x){return s+x.principal*x.taxa/100/30;},0);
-  var dataHoje=hoje().toLocaleDateString('pt-BR');
-  var linhas='';
-  todos.forEach(function(x,i){
-    var vh=calcValor(x); var dv=diasVencer(x.vencimento);
-    var dvTxt=dv<0?'⚠️ Venceu há '+Math.abs(dv)+' dias':dv===0?'⚠️ Vence HOJE!':'📅 Vence em '+dv+' dias ('+fmtData(x.vencimento)+')';
-    if(todos.length>1) linhas+='\n*Empréstimo '+(i+1)+(x.parcelaTotal?' (Parcela '+x.parcelaAtual+'/'+x.parcelaTotal+'):*':':*');
-    linhas+='\n💵 Valor hoje: *'+fmtBRL(vh)+'*\n'+dvTxt+'\n';
+function enviarLinkConsulta(nomeCliente) {
+  var todos = emprestimos.filter(function(x){ return x.ativo && x.cliente === nomeCliente; });
+  todos.sort(function(a,b){ return new Date(a.vencimento)-new Date(b.vencimento); });
+  var dadosLink = todos.map(function(x){
+    return {
+      principal: x.principal,
+      principalOriginal: x.principalOriginal||x.principal,
+      taxa: x.taxa,
+      inicio: x.inicio,
+      vencimento: x.vencimento,
+      valorParcela: x.valorParcela||null,
+      parcelaAtual: x.parcelaAtual||1,
+      parcelaTotal: x.parcelaTotal||null
+    };
   });
-  var msg='💰 *MP Empréstimo*\n\nOlá, *'+nomeCliente+'*!\n\n📊 *Saldo em '+dataHoje+':*'
-    +linhas
-    +(todos.length>1?'\n💰 *Total: '+fmtBRL(totalHoje)+'*':'')
-    +'\n⚡ Rendendo '+fmtBRL(porDia)+' por dia'
-    +'\n\n💳 *PIX:* 40161279805'
-    +'\n\n_Qualquer dúvida entre em contato._';
-  if(navigator.share){navigator.share({title:'MP Empréstimo',text:msg});}
-  else if(navigator.clipboard){navigator.clipboard.writeText(msg).then(function(){alert('Copiado! Cole no WhatsApp ✅');});}
-  else{var ta=document.createElement('textarea');ta.value=msg;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);alert('Copiado! Cole no WhatsApp ✅');}
+  var link = 'https://mateusjogo086-lang.github.io/Mateus/consulta.html?cliente='
+    + encodeURIComponent(nomeCliente)
+    + '&dados=' + btoa(unescape(encodeURIComponent(JSON.stringify(dadosLink))));
+  if (navigator.share) {
+    navigator.share({ title: 'MP Empréstimo — '+nomeCliente, text: '💰 Consulte seu saldo:', url: link });
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(link).then(function(){ alert('Link copiado! Envie para '+nomeCliente+' ✅'); });
+  } else {
+    var ta=document.createElement('textarea'); ta.value=link;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    alert('Link copiado! ✅');
+  }
 }
 
 // ── CLIENTES
@@ -1000,7 +1005,7 @@ setInterval(checarNotif,3600000);
 <input type="file" id="input-backup" accept=".json" style="display:none" onchange="lerBackup(event)">
 
 <!-- MODAL CONSULTA CLIENTE -->
-<div id="modal-consulta" class="modal"><div class="modal-box" style="max-height:85vh;overflow-y:auto"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="font-size:14px;font-weight:600;color:var(--muted)">🔗 Extrato do Cliente</div><button onclick="document.getElementById('modal-consulta').classList.remove('open')" style="background:var(--card2);border:none;color:var(--muted);border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer">✕ Fechar</button></div><div id="consulta-body"></div></div></div>
+<div id="modal-consulta" class="modal"><div class="modal-box" style="max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="font-size:14px;font-weight:600;color:var(--muted)">🔗 Extrato do Cliente</div><button onclick="document.getElementById('modal-consulta').classList.remove('open')" style="background:var(--card2);border:none;color:var(--muted);border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer">✕ Fechar</button></div><div id="consulta-body"></div></div></div>
 
 </body>
 </html>
