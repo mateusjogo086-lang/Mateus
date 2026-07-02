@@ -4,12 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>MP Empréstimo</title>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#2ecc71">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="MP Empréstimo">
-<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#0d1117;--card:#161b22;--card2:#1c2430;--green:#2ecc71;--gd:#27ae60;--yellow:#f39c12;--red:#e74c3c;--text:#e6edf3;--muted:#8b949e;--border:#30363d}
@@ -261,6 +255,8 @@ input[type="date"]{min-height:44px;color-scheme:dark}
 </div>
 
 <script>
+// Remove service workers
+if(navigator.serviceWorker){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(sw){sw.unregister();});});}
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 // ── ESTADO
@@ -962,7 +958,7 @@ function switchTab(tab,el) {
   el.classList.add('active');
   if(tab==='dash') setTimeout(renderDash,100);
   if(tab==='quitados') renderQuitados();
-
+}
 
 // ── NOTIFICAÇÕES
 function pedirNotif(){if('Notification'in window&&Notification.permission==='default')Notification.requestPermission();}
@@ -977,9 +973,6 @@ function checarNotif(){
   });
 }
 
-// PWA
-// Desregistra service workers antigos que causam travamento
-if('serviceWorker'in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.unregister();});});}
 
 // ── INIT
 popularSelect();
