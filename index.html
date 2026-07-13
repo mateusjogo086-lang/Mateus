@@ -241,6 +241,48 @@ input[type="date"]{min-height:44px;color-scheme:dark}
   <div class="scroll-area" id="clientes-container" style="padding-top:12px"></div>
 </div>
 
+<!-- TAB CALENDÁRIO -->
+<div id="tab-cal" class="tab-content">
+  <div class="header">
+    <div class="app-brand">
+      <div class="app-icon">💰</div>
+      <div><div class="app-name">MP Empréstimo</div><div class="app-sub">Agenda de recebimentos</div></div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+      <button onclick="calNavMes(-1)" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;color:var(--text);font-size:18px;cursor:pointer">‹</button>
+      <div style="text-align:center">
+        <div style="font-size:18px;font-weight:700" id="cal-mes-label">-</div>
+        <div style="font-size:12px;color:var(--muted)" id="cal-mes-total">-</div>
+      </div>
+      <button onclick="calNavMes(1)" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;color:var(--text);font-size:18px;cursor:pointer">›</button>
+    </div>
+  </div>
+  <div class="scroll-area">
+    <!-- Resumo do mês -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 16px 0">
+      <div class="sc"><div class="sl">⚡ Por Dia</div><div class="sv g" id="cal-pordia">R$ 0</div></div>
+      <div class="sc"><div class="sl">📅 Vencimentos</div><div class="sv" id="cal-venc-count" style="color:#3498db">0</div></div>
+      <div class="sc"><div class="sl">💰 Total Mês</div><div class="sv g" id="cal-total-mes">R$ 0</div></div>
+    </div>
+    <!-- Dias da semana -->
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:12px 16px 4px">
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-weight:600">DOM</div>
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-weight:600">SEG</div>
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-weight:600">TER</div>
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-weight:600">QUA</div>
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-weight:600">QUI</div>
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-weight:600">SEX</div>
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-weight:600">SÁB</div>
+    </div>
+    <div id="cal-grid" style="padding:0 16px 12px"></div>
+    <!-- Lista de vencimentos do mês -->
+    <div style="padding:0 16px;margin-bottom:16px">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">📋 Vencimentos do Mês</div>
+      <div id="cal-lista"></div>
+    </div>
+  </div>
+</div>
+
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav" style="grid-template-columns:repeat(5,1fr)">
   <button class="ni active" onclick="switchTab('ativos',this)"><span class="nii">📋</span><span>Ativos</span></button>
@@ -1021,6 +1063,130 @@ function atualizarApp() {
   popularSelect();renderAtivos();renderQuitados();renderClientes();setTimeout(renderDash,100);
 }
 
+// ── CALENDÁRIO
+var calMesAtual = new Date().getMonth();
+var calAnoAtual = new Date().getFullYear();
+
+function calNavMes(dir) {
+  calMesAtual += dir;
+  if (calMesAtual > 11) { calMesAtual = 0; calAnoAtual++; }
+  if (calMesAtual < 0) { calMesAtual = 11; calAnoAtual--; }
+  renderCalendario();
+}
+
+function renderCalendario() {
+  var MESES_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var mes = calMesAtual;
+  var ano = calAnoAtual;
+  var hoje_d = new Date();
+  var hoje_dia = hoje_d.getDate();
+  var hoje_mes = hoje_d.getMonth();
+  var hoje_ano = hoje_d.getFullYear();
+  var porDia = emprestimos.filter(function(e){return e.ativo;}).reduce(function(s,e){
+    return s + (e.valorParcela && e.tipoBullet ? 0 : e.principal*e.taxa/100/30);
+  },0);
+
+  // Label do mês
+  document.getElementById('cal-mes-label').textContent = MESES_FULL[mes] + ' ' + ano;
+  document.getElementById('cal-pordia').textContent = fmtBRL(porDia);
+
+  // Empréstimos com vencimento neste mês
+  var vencMes = emprestimos.filter(function(e){
+    var d = new Date(e.vencimento+'T12:00:00');
+    return e.ativo && d.getMonth()===mes && d.getFullYear()===ano;
+  });
+  document.getElementById('cal-venc-count').textContent = vencMes.length;
+  document.getElementById('cal-total-mes').textContent = fmtBRL(porDia*30);
+  document.getElementById('cal-mes-total').textContent = vencMes.length+' vencimento'+(vencMes.length!=1?'s':'');
+
+  // Monta calendário
+  var primeiroDia = new Date(ano, mes, 1).getDay();
+  var diasNoMes = new Date(ano, mes+1, 0).getDate();
+
+  // Mapa de vencimentos por dia
+  var vencPorDia = {};
+  vencMes.forEach(function(e){
+    var dia = new Date(e.vencimento+'T12:00:00').getDate();
+    if(!vencPorDia[dia]) vencPorDia[dia] = [];
+    vencPorDia[dia].push(e);
+  });
+
+  var grid = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">';
+
+  // Células vazias antes do primeiro dia
+  for(var i=0; i<primeiroDia; i++) {
+    grid += '<div style="height:52px"></div>';
+  }
+
+  // Dias do mês
+  for(var dia=1; dia<=diasNoMes; dia++) {
+    var eHoje = (dia===hoje_dia && mes===hoje_mes && ano===hoje_ano);
+    var ePassado = new Date(ano,mes,dia) < new Date(hoje_ano,hoje_mes,hoje_dia);
+    var temVenc = vencPorDia[dia];
+    var ganhosDia = porDia;
+
+    var bg = 'var(--card2)';
+    var borda = '1px solid var(--border)';
+    var corDia = ePassado ? 'var(--muted)' : 'var(--text)';
+
+    if(eHoje) { bg='rgba(46,204,113,.2)'; borda='1px solid rgba(46,204,113,.6)'; corDia='var(--green)'; }
+    if(temVenc) { bg='rgba(52,152,219,.15)'; borda='1px solid rgba(52,152,219,.5)'; }
+    if(temVenc && eHoje) { bg='rgba(46,204,113,.25)'; borda='2px solid var(--green)'; }
+
+    // Ponto de vencimento
+    var dots = '';
+    if(temVenc) {
+      dots = '<div style="display:flex;justify-content:center;gap:2px;margin-top:1px">';
+      temVenc.slice(0,3).forEach(function(){
+        dots += '<div style="width:4px;height:4px;border-radius:50%;background:#3498db"></div>';
+      });
+      dots += '</div>';
+    }
+
+    var ganhoStr = fmtBRL(ganhosDia).replace('R$ ','');
+
+    grid += '<div onclick="calDiaClick('+dia+','+mes+','+ano+')" style="height:60px;background:'+bg+';border:'+borda+';border-radius:8px;padding:4px;cursor:pointer;display:flex;flex-direction:column;align-items:center">'
+      +'<div style="font-size:13px;font-weight:'+(eHoje?'700':'400')+';color:'+corDia+'">'+dia+'</div>'
+      +'<div style="font-size:9px;color:var(--green);font-weight:600">+'+ganhoStr+'</div>'
+      +dots
+      +'</div>';
+  }
+
+  grid += '</div>';
+  document.getElementById('cal-grid').innerHTML = grid;
+
+  // Lista vencimentos
+  var lista = '';
+  if(vencMes.length) {
+    vencMes.sort(function(a,b){return new Date(a.vencimento)-new Date(b.vencimento);}).forEach(function(e){
+      var dv = diasVencer(e.vencimento);
+      var cor = dv<0?'#e74c3c':dv<=5?'#f39c12':'#2ecc71';
+      var dvTxt = dv<0?'Venceu há '+Math.abs(dv)+'d':dv===0?'HOJE!':'Em '+dv+' dias';
+      lista += '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:10px;padding:10px 12px;margin-bottom:8px;border:1px solid var(--border)">'
+        +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<div style="background:'+cor+';border-radius:8px;padding:4px 8px;font-size:12px;font-weight:700;color:#000;min-width:32px;text-align:center">'+fmtData(e.vencimento).substring(0,5)+'</div>'
+        +'<div><div style="font-size:13px;font-weight:600">'+e.cliente+'</div>'
+        +'<div style="font-size:11px;color:var(--muted)">'+dvTxt+'</div></div></div>'
+        +'<div style="text-align:right"><div style="font-size:13px;font-weight:700;color:'+cor+'">'+fmtBRL(calcValorFinal(e))+'</div>'
+        +'<div style="font-size:10px;color:var(--muted)">Hoje: '+fmtBRL(calcValor(e))+'</div></div>'
+        +'</div>';
+    });
+  } else {
+    lista = '<div class="empty"><div class="empty-i">📅</div>Nenhum vencimento neste mês</div>';
+  }
+  document.getElementById('cal-lista').innerHTML = lista;
+}
+
+function calDiaClick(dia, mes, ano) {
+  // Mostra empréstimos que vencem neste dia
+  var data = String(ano)+'-'+String(mes+1).padStart(2,'0')+'-'+String(dia).padStart(2,'0');
+  var venc = emprestimos.filter(function(e){ return e.ativo && e.vencimento===data; });
+  if(!venc.length) return;
+  var msg = '📅 '+fmtData(data)+' — Vencimentos: ';
+  venc.forEach(function(e){ msg += e.cliente+': '+fmtBRL(calcValorFinal(e))+' | '; });
+  alert(msg);
+}
+
 // ── NAV
 function switchTab(tab,el) {
   document.querySelectorAll('.tab-content').forEach(function(t){t.classList.remove('active');});
@@ -1029,6 +1195,7 @@ function switchTab(tab,el) {
   el.classList.add('active');
   if(tab==='dash') setTimeout(renderDash,100);
   if(tab==='quitados') setTimeout(renderQuitados,50);
+  if(tab==='cal') setTimeout(renderCalendario,50);
 }
 
 // ── NOTIFICAÇÕES
