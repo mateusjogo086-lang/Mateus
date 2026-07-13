@@ -580,6 +580,22 @@ function renderQuitados() {
   var cont=document.getElementById('quitados-container');
   if(!cont) return;
   var quitados=emprestimos.filter(function(e){return !e.ativo;});
+
+  // Stats
+  var totalPago = quitados.reduce(function(s,e){return s+(e.pago||0);},0);
+  var totalPrincipal = quitados.reduce(function(s,e){
+    if(e.grupoId){return s;} // ignora parcelas do mesmo grupo duplicadas
+    return s+(e.principalOriginal||e.principal||0);
+  },0);
+  var lucroTotal = totalPago - totalPrincipal;
+
+  var qTotal = document.getElementById('q-total');
+  var qLucro = document.getElementById('q-lucro');
+  var qCount = document.getElementById('q-count');
+  if(qTotal) qTotal.textContent = fmtBRL(totalPago);
+  if(qLucro) qLucro.textContent = fmtBRL(lucroTotal);
+  if(qCount) qCount.textContent = quitados.length;
+
   if(!quitados.length){cont.innerHTML='<div class="empty"><div class="empty-i">✅</div>Nenhum empréstimo quitado ainda.</div>';return;}
   var grupos={};
   quitados.forEach(function(e){var c=e.dataPagamento?getMesChave(e.dataPagamento):getMesChave(e.vencimento);if(!grupos[c])grupos[c]=[];grupos[c].push(e);});
