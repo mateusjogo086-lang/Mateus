@@ -161,11 +161,21 @@ input[type="date"]{min-height:44px;color-scheme:dark}
 <!-- TAB QUITADOS -->
 <div id="tab-quitados" class="tab-content">
   <div class="header">
-    <div class="app-brand"><div class="app-icon">💰</div><div><div class="app-name">MP Empréstimo</div><div class="app-sub">Quitados</div></div></div>
+    <div class="app-brand"><div class="app-icon">💰</div><div><div class="app-name">MP Empréstimo</div><div class="app-sub">Empréstimos quitados</div></div></div>
+    <div class="header-total" id="q-total">R$ 0,00</div>
+    <div class="header-cap">Total recebido</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+      <div style="background:rgba(46,204,113,.15);border-radius:10px;padding:10px 12px;border:1px solid rgba(46,204,113,.2)">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">💹 Lucro Total</div>
+        <div style="font-size:18px;font-weight:700;color:var(--green)" id="q-lucro">R$ 0,00</div>
+      </div>
+      <div style="background:rgba(52,152,219,.15);border-radius:10px;padding:10px 12px;border:1px solid rgba(52,152,219,.2)">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">📋 Quitados</div>
+        <div style="font-size:18px;font-weight:700;color:#3498db" id="q-count">0</div>
+      </div>
+    </div>
   </div>
-  <div class="scroll-area" id="quitados-container">
-    <div class="empty"><div class="empty-i">✅</div>Nenhum empréstimo quitado ainda.</div>
-  </div>
+  <div class="scroll-area" id="quitados-container"></div>
 </div>
 
 <!-- TAB DASHBOARD -->
@@ -406,6 +416,7 @@ function renderAtivos() {
     var backupData = localStorage.getItem('mp_autobackup_data');
     backupEl.textContent = backupData ? '💾 Último backup: '+backupData : '⚠️ Sem backup ainda';
   }
+  document.getElementById('total-geral').textContent = fmtBRL(totalH);
   document.getElementById('capital-label').textContent = fmtBRL(totalP);
   document.getElementById('stat-lucro').textContent = fmtBRL(lucro);
   document.getElementById('stat-lucro-pct').textContent = pct.toFixed(1)+'% sobre capital';
