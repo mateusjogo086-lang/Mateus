@@ -311,7 +311,11 @@ function diasEntre(d1s, d2) {
   return Math.floor((d2 - new Date(d1s+'T12:00:00')) / 86400000);
 }
 function calcValor(e) {
-  // Para parcelas com valor fixo: cresce diariamente mas para no teto
+  // Para parcelas bullet: mostra o valorParcela fixo direto (não cresce por dia)
+  if (e.valorParcela && e.tipoBullet) {
+    return e.valorParcela;
+  }
+  // Para parcelas iguais: cresce diariamente mas para no teto
   if (e.valorParcela) {
     var dias = Math.max(0, diasEntre(e.inicio, hoje()));
     var vDiario = e.principal * (1 + (e.taxa/100/30) * dias);
