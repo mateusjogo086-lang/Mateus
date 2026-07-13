@@ -742,21 +742,23 @@ function copiarLink(id) {
 function enviarLinkConsulta(nomeCliente) {
   var todos = emprestimos.filter(function(x){ return x.ativo && x.cliente === nomeCliente; });
   todos.sort(function(a,b){ return new Date(a.vencimento)-new Date(b.vencimento); });
+  // Dados mínimos para reduzir tamanho do link
   var dadosLink = todos.map(function(x){
-    return {
-      principal: x.principal,
-      principalOriginal: x.principalOriginal||x.principal,
-      taxa: x.taxa,
-      inicio: x.inicio,
-      vencimento: x.vencimento,
-      valorParcela: x.valorParcela||null,
-      parcelaAtual: x.parcelaAtual||1,
-      parcelaTotal: x.parcelaTotal||null
+    var d = {
+      p: x.principalOriginal||x.principal,
+      t: x.taxa,
+      i: x.inicio,
+      v: x.vencimento
     };
+    if(x.valorParcela) d.vp = x.valorParcela;
+    if(x.tipoBullet) d.b = 1;
+    if(x.parcelaAtual) d.pa = x.parcelaAtual;
+    if(x.parcelaTotal) d.pt = x.parcelaTotal;
+    return d;
   });
-  var link = 'https://mateusjogo086-lang.github.io/Mateus/consulta.html?cliente='
+  var link = 'https://mateusjogo086-lang.github.io/Mateus/consulta.html?c='
     + encodeURIComponent(nomeCliente)
-    + '&dados=' + btoa(unescape(encodeURIComponent(JSON.stringify(dadosLink))));
+    + '&d=' + btoa(unescape(encodeURIComponent(JSON.stringify(dadosLink))));
   if (navigator.share) {
     navigator.share({ title: 'MP Empréstimo — '+nomeCliente, text: '💰 Consulte seu saldo:', url: link });
   } else if (navigator.clipboard) {
@@ -1026,7 +1028,7 @@ function switchTab(tab,el) {
   document.getElementById('tab-'+tab).classList.add('active');
   el.classList.add('active');
   if(tab==='dash') setTimeout(renderDash,100);
-  if(tab==='quitados') renderQuitados();
+  if(tab==='quitados') setTimeout(renderQuitados,50);
 }
 
 // ── NOTIFICAÇÕES
