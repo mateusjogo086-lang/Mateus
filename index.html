@@ -373,7 +373,7 @@ function reconstruirHistorico() {
       });
 
       var porDiaCalc = ativosNaData.reduce(function(s, e) {
-        return s + (e.valorParcela && e.tipoBullet ? 0 : e.principal * e.taxa / 100 / 30);
+        return s + e.principal * e.taxa / 100 / 30;
       }, 0);
 
       historico[dataStr] = {
@@ -1258,7 +1258,7 @@ function renderCalendario() {
   var hoje_mes = hoje_d.getMonth();
   var hoje_ano = hoje_d.getFullYear();
   var porDiaAtual = emprestimos.filter(function(e){return e.ativo;}).reduce(function(s,e){
-    return s + (e.valorParcela && e.tipoBullet ? 0 : e.principal*e.taxa/100/30);
+    return s + e.principal*e.taxa/100/30;
   },0);
 
   // Carrega histórico
@@ -1267,9 +1267,8 @@ function renderCalendario() {
 
   // Label do mês
   document.getElementById('cal-mes-label').textContent = MESES_FULL[mes] + ' ' + ano;
-  // Usa o mesmo valor do dashboard
   var porDiaDash = emprestimos.filter(function(e){return e.ativo;}).reduce(function(s,e){
-    return s + (e.valorParcela && e.tipoBullet ? 0 : e.principal*e.taxa/100/30);
+    return s + e.principal*e.taxa/100/30;
   },0);
   document.getElementById('cal-pordia').textContent = fmtBRL(porDiaDash);
 
