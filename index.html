@@ -1275,7 +1275,7 @@ function renderCalendario() {
     return e.ativo && d.getMonth()===mes && d.getFullYear()===ano;
   });
   document.getElementById('cal-venc-count').textContent = vencMes.length;
-  document.getElementById('cal-total-mes').textContent = fmtBRL(porDia*30);
+  document.getElementById('cal-total-mes').textContent = fmtBRL(porDiaAtual*30);
   document.getElementById('cal-mes-total').textContent = vencMes.length+' vencimento'+(vencMes.length!=1?'s':'');
 
   // Monta calendário
