@@ -1285,6 +1285,39 @@ function renderCalendario() {
   document.getElementById('cal-total-mes').textContent = fmtBRL(porDiaAtual*30);
   document.getElementById('cal-mes-total').textContent = vencMes.length+' vencimento'+(vencMes.length!=1?'s':'');
 
+  // Total ganho até hoje — calcula direto dos empréstimos
+  var hoje_str2 = new Date().toISOString().split('T')[0];
+  var totalGanho = 0;
+  var diasRegistrados = 0;
+
+  // Primeiro tenta do histórico salvo
+  var temHistorico = Object.keys(historico).filter(function(d){ return d <= hoje_str2; }).length > 0;
+
+  if (temHistorico) {
+    Object.keys(historico).forEach(function(d){
+      if(d <= hoje_str2 && historico[d] && historico[d].porDia) {
+        totalGanho += historico[d].porDia;
+        diasRegistrados++;
+      }
+    });
+  } else {
+    // Se não tem histórico, soma os valores visíveis no calendário (dias passados + hoje)
+    emprestimos.forEach(function(e) {
+      var inicio = new Date(e.inicio+'T12:00:00');
+      var fim = e.dataPagamento ? new Date(e.dataPagamento+'T12:00:00') : new Date();
+      if (fim > new Date()) fim = new Date();
+      var dias = Math.max(0, Math.floor((fim - inicio) / 86400000));
+      totalGanho += e.principal * e.taxa / 100 / 30 * dias;
+    });
+    diasRegistrados = Math.max(0, Math.floor((new Date() - new Date(emprestimos.reduce(function(min, e){
+      return e.inicio < min ? e.inicio : min;
+    }, hoje_str2)+'T12:00:00')) / 86400000));
+  }
+  var elTotal = document.getElementById('cal-total-ganho');
+  var elDias = document.getElementById('cal-dias-count');
+  if(elTotal) elTotal.textContent = fmtBRL(totalGanho);
+  if(elDias) elDias.textContent = diasRegistrados+' dias registrados';
+
   // Monta calendário
   var primeiroDia = new Date(ano, mes, 1).getDay();
   var diasNoMes = new Date(ano, mes+1, 0).getDate();
