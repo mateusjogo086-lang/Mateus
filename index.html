@@ -372,12 +372,12 @@ function reconstruirHistorico() {
         return inicio <= dataRef && dataRef <= fim;
       });
 
-      var porDia = ativosNaData.reduce(function(s, e) {
+      var porDiaCalc = ativosNaData.reduce(function(s, e) {
         return s + (e.valorParcela && e.tipoBullet ? 0 : e.principal * e.taxa / 100 / 30);
       }, 0);
 
       historico[dataStr] = {
-        porDia: porDia,
+        porDia: porDiaCalc,
         totalAtivos: ativosNaData.length,
         totalCapital: ativosNaData.reduce(function(s,e){return s+e.principal;},0)
       };
