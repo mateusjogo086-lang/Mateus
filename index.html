@@ -1423,7 +1423,11 @@ function calDiaClick(dataStr) {
     venc.forEach(function(e){ msg += '- '+e.cliente+': '+fmtBRL(e.pago||calcValorFinal(e))+'\n'; });
   }
   if(!msg) return;
-  mostrarConfirm(dataFormatada, msg, function(){});
+
+  // Mostra popup simples com só botão fechar
+  document.getElementById('info-dia-titulo').textContent = dataFormatada;
+  document.getElementById('info-dia-msg').textContent = msg;
+  document.getElementById('modal-info-dia').classList.add('open');
 }
 
 // ── NAV
