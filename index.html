@@ -1416,17 +1416,32 @@ function calDiaClick(dataStr) {
   var hist = historico[dataStr];
   var partes = dataStr.split('-');
   var dataFormatada = partes[2]+'/'+partes[1]+'/'+partes[0];
-  var msg = '';
-  if(hist) msg += 'Rendimento: R$ '+hist.porDia.toFixed(2).replace('.',',')+'/dia\nAtivos: '+hist.totalAtivos+' emprestimos\n\n';
-  if(venc.length) {
-    msg += 'Vencimentos:\n';
-    venc.forEach(function(e){ msg += '- '+e.cliente+': '+fmtBRL(e.pago||calcValorFinal(e))+'\n'; });
-  }
-  if(!msg) return;
+  
+  if(!hist && !venc.length) return;
 
-  // Mostra popup simples com só botão fechar
+  var html = '';
+  
+  if(hist) {
+    html += '<div style="background:linear-gradient(135deg,#0d2818,#152a1e);border-radius:12px;padding:14px;border:1px solid rgba(46,204,113,.2);margin-bottom:12px">'
+      +'<div style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Rendimento do dia</div>'
+      +'<div style="font-size:28px;font-weight:700;color:var(--green)">+'+fmtBRL(hist.porDia)+'</div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-top:4px">'+hist.totalAtivos+' empréstimo'+(hist.totalAtivos!=1?'s':'')+' ativos</div>'
+      +'</div>';
+  }
+
+  if(venc.length) {
+    html += '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Vencimentos</div>';
+    venc.forEach(function(e){
+      var val = e.pago||calcValorFinal(e);
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;background:var(--card2);border-radius:10px;padding:10px 12px;margin-bottom:6px">'
+        +'<div style="font-size:14px;font-weight:600">'+e.cliente+'</div>'
+        +'<div style="font-size:14px;font-weight:700;color:var(--green)">'+fmtBRL(val)+'</div>'
+        +'</div>';
+    });
+  }
+
   document.getElementById('info-dia-titulo').textContent = dataFormatada;
-  document.getElementById('info-dia-msg').textContent = msg;
+  document.getElementById('info-dia-body').innerHTML = html;
   document.getElementById('modal-info-dia').classList.add('open');
 }
 
@@ -1552,6 +1567,17 @@ setInterval(checarNotif,3600000);
     </div>
 
     <button onclick="fecharCalculadora()" style="width:100%;margin-top:12px;background:var(--card2);color:var(--text);border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:600;cursor:pointer">Fechar</button>
+  </div>
+</div>
+
+<!-- MODAL INFO DIA -->
+<div id="modal-info-dia" class="modal">
+  <div class="modal-box">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:16px;font-weight:700;color:var(--green)" id="info-dia-titulo"></div>
+      <button onclick="document.getElementById('modal-info-dia').classList.remove('open')" style="background:var(--card2);border:none;color:var(--muted);border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer">✕</button>
+    </div>
+    <div id="info-dia-body"></div>
   </div>
 </div>
 
