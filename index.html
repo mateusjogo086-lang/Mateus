@@ -124,7 +124,7 @@ input[type="date"]{min-height:44px;color-scheme:dark}
 <body>
 
 <!-- TAB ATIVOS -->
-<div id="tab-ativos" class="tab-content active">
+<div id="tab-ativos" class="tab-content">
   <div class="header">
     <div class="app-brand">
       <div class="app-icon">💰</div>
@@ -179,7 +179,7 @@ input[type="date"]{min-height:44px;color-scheme:dark}
 </div>
 
 <!-- TAB DASHBOARD -->
-<div id="tab-dash" class="tab-content">
+<div id="tab-dash" class="tab-content active">
   <div class="header">
     <div class="app-brand">
       <div class="app-icon">💰</div>
@@ -290,9 +290,9 @@ input[type="date"]{min-height:44px;color-scheme:dark}
 
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav" style="grid-template-columns:repeat(6,1fr)">
-  <button class="ni active" onclick="switchTab('ativos',this)"><span class="nii">📋</span><span>Ativos</span></button>
+  <button class="ni" onclick="switchTab('ativos',this)"><span class="nii">📋</span><span>Ativos</span></button>
   <button class="ni" onclick="switchTab('quitados',this)"><span class="nic">✓</span><span>Quitados</span></button>
-  <button class="ni" onclick="switchTab('dash',this)"><span class="nii">📊</span><span>Dashboard</span></button>
+  <button class="ni active" onclick="switchTab('dash',this)"><span class="nii">📊</span><span>Dashboard</span></button>
   <button class="ni" onclick="switchTab('cal',this)"><span class="nii">📅</span><span>Agenda</span></button>
   <button class="ni" onclick="switchTab('novo',this)"><span class="nii">＋</span><span>Novo</span></button>
   <button class="ni" onclick="switchTab('clientes',this)"><span class="nii">👤</span><span>Clientes</span></button>
@@ -1267,7 +1267,11 @@ function renderCalendario() {
 
   // Label do mês
   document.getElementById('cal-mes-label').textContent = MESES_FULL[mes] + ' ' + ano;
-  document.getElementById('cal-pordia').textContent = fmtBRL(porDiaAtual);
+  // Usa o mesmo valor do dashboard
+  var porDiaDash = emprestimos.filter(function(e){return e.ativo;}).reduce(function(s,e){
+    return s + (e.valorParcela && e.tipoBullet ? 0 : e.principal*e.taxa/100/30);
+  },0);
+  document.getElementById('cal-pordia').textContent = fmtBRL(porDiaDash);
 
   // Empréstimos com vencimento neste mês
   var vencMes = emprestimos.filter(function(e){
@@ -1304,15 +1308,22 @@ function renderCalendario() {
     var temVenc = vencPorDia[dia];
     // Busca rendimento histórico daquele dia
     var dataStr = String(ano)+'-'+String(mes+1).padStart(2,'0')+'-'+String(dia).padStart(2,'0');
-    var ganhosDia = porDiaAtual; // padrão: rendimento atual
     var isPassado = new Date(ano,mes,dia) < new Date(hoje_ano,hoje_mes,hoje_dia);
+    var isHoje = (dia===hoje_dia && mes===hoje_mes && ano===hoje_ano);
     var isFuturo = new Date(ano,mes,dia) > new Date(hoje_ano,hoje_mes,hoje_dia);
+    var ganhosDia = null;
+
     if (historico[dataStr]) {
+      // Tem histórico real para este dia
       ganhosDia = historico[dataStr].porDia;
-    } else if (isPassado) {
-      // Dia passado sem histórico — tenta estimar pelo mais próximo
-      ganhosDia = null;
+    } else if (isHoje) {
+      // Hoje: usa o valor atual
+      ganhosDia = porDiaAtual;
+    } else if (isFuturo && vencPorDia[dia]) {
+      // Futuro com vencimento: mostra estimativa
+      ganhosDia = porDiaAtual;
     }
+    // Passado sem histórico ou futuro sem vencimento: null (não mostra)
 
     var bg = 'var(--card2)';
     var borda = '1px solid var(--border)';
@@ -1332,9 +1343,9 @@ function renderCalendario() {
       dots += '</div>';
     }
 
-    var ganhoStr = ganhosDia !== null ? fmtBRL(ganhosDia).replace('R$ ','') : '---';
-    var ganhoColor = ganhosDia !== null ? 'var(--green)' : 'var(--muted)';
-    var ganhoPrefix = isFuturo ? '~' : ganhosDia !== null ? '+' : '';
+    var ganhoStr = ganhosDia !== null ? fmtBRL(ganhosDia).replace('R$ ','') : '';
+    var ganhoColor = isHoje ? 'var(--yellow)' : isPassado ? 'var(--green)' : 'rgba(46,204,113,.5)';
+    var ganhoPrefix = (isFuturo && ganhosDia !== null) ? '~' : (ganhosDia !== null && !isFuturo) ? '+' : '';
 
     grid += '<div onclick="calDiaClick(\'' + dataStr + '\')" style="height:60px;background:'+bg+';border:'+borda+';border-radius:8px;padding:4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center">'
       +'<div style="font-size:13px;font-weight:'+(eHoje?'700':'400')+';color:'+corDia+'">'+dia+'</div>'
@@ -1440,7 +1451,7 @@ if (emprestimos.length === 0) {
 renderAtivos();
 renderQuitados();
 registrarRendimentoDia();
-setTimeout(renderDash,300);
+setTimeout(renderDash, 100);
 pedirNotif();
 checarNotif();
 setInterval(checarNotif,3600000);
