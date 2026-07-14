@@ -269,6 +269,12 @@ input[type="date"]{min-height:44px;color-scheme:dark}
       <div class="sc"><div class="sl">📅 Vencimentos</div><div class="sv" id="cal-venc-count" style="color:#3498db">0</div></div>
       <div class="sc"><div class="sl">💰 Total Mês</div><div class="sv g" id="cal-total-mes">R$ 0</div></div>
     </div>
+    <!-- Total acumulado simples -->
+    <div style="margin:10px 16px 0;background:linear-gradient(135deg,#0d2818,#152a1e);border-radius:14px;padding:14px;border:1px solid rgba(46,204,113,.2)">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">💰 Total ganho até hoje</div>
+      <div style="font-size:28px;font-weight:700;color:var(--green)" id="cal-total-ganho">R$ 0,00</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px" id="cal-dias-count">0 dias registrados</div>
+    </div>
     <!-- Dias da semana -->
     <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:12px 16px 4px">
       <div style="text-align:center;font-size:11px;color:var(--muted);font-weight:600">DOM</div>
@@ -375,7 +381,6 @@ function reconstruirHistorico() {
       var porDiaCalc = ativosNaData.reduce(function(s, e) {
         return s + e.principal * e.taxa / 100 / 30;
       }, 0);
-
       historico[dataStr] = {
         porDia: porDiaCalc,
         totalAtivos: ativosNaData.length,
@@ -421,21 +426,20 @@ function reconstruirHistorico() {
 
 function registrarRendimentoDia() {
   try {
-    var porDia = ativos.reduce(function(s,e){
-      return s + (e.valorParcela && e.tipoBullet ? 0 : e.principal*e.taxa/100/30);
+    var ativosAgora = emprestimos.filter(function(e){return e.ativo;});
+    // Usa o mesmo cálculo do Dashboard — inclui todos os empréstimos
+    var porDiaHoje = ativosAgora.reduce(function(s,e){
+      return s + e.principal*e.taxa/100/30;
     }, 0);
     var hoje_str = new Date().toISOString().split('T')[0];
     var historico = JSON.parse(localStorage.getItem('mp_historico')||'{}');
     historico[hoje_str] = {
-      porDia: porDia,
-      totalAtivos: ativos.length,
-      totalCapital: ativos.reduce(function(s,e){return s+e.principal;},0)
+      porDia: porDiaHoje,
+      totalAtivos: ativosAgora.length,
+      totalCapital: ativosAgora.reduce(function(s,e){return s+e.principal;},0)
     };
-    // Mantém só 365 dias
     var chaves = Object.keys(historico).sort();
-    if(chaves.length > 365) {
-      delete historico[chaves[0]];
-    }
+    if(chaves.length > 365) delete historico[chaves[0]];
     localStorage.setItem('mp_historico', JSON.stringify(historico));
   } catch(e) {}
 }
@@ -1310,13 +1314,13 @@ function renderCalendario() {
     var isHoje = (dia===hoje_dia && mes===hoje_mes && ano===hoje_ano);
     var isFuturo = new Date(ano,mes,dia) > new Date(hoje_ano,hoje_mes,hoje_dia);
     var ganhosDia = null;
-
-    if (historico[dataStr]) {
-      ganhosDia = historico[dataStr].porDia;
+    if (isFuturo) {
+      ganhosDia = null; // Futuro: nunca mostra
+    } else if (historico[dataStr]) {
+      ganhosDia = historico[dataStr].porDia; // Histórico real
     } else if (isHoje) {
-      ganhosDia = porDiaAtual;
+      ganhosDia = porDiaAtual; // Hoje sem histórico: usa atual
     }
-    // Futuro: não mostra nada
 
     var bg = 'var(--card2)';
     var borda = '1px solid var(--border)';
@@ -1443,7 +1447,7 @@ if (emprestimos.length === 0) {
 }
 renderAtivos();
 renderQuitados();
-registrarRendimentoDia();
+registrarRendimentoDia(); // Salva rendimento de hoje automaticamente
 setTimeout(renderDash, 100);
 pedirNotif();
 checarNotif();
