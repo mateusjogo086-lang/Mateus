@@ -1305,7 +1305,6 @@ function renderCalendario() {
     var eHoje = (dia===hoje_dia && mes===hoje_mes && ano===hoje_ano);
     var ePassado = new Date(ano,mes,dia) < new Date(hoje_ano,hoje_mes,hoje_dia);
     var temVenc = vencPorDia[dia];
-    // Busca rendimento histórico daquele dia
     var dataStr = String(ano)+'-'+String(mes+1).padStart(2,'0')+'-'+String(dia).padStart(2,'0');
     var isPassado = new Date(ano,mes,dia) < new Date(hoje_ano,hoje_mes,hoje_dia);
     var isHoje = (dia===hoje_dia && mes===hoje_mes && ano===hoje_ano);
@@ -1313,16 +1312,11 @@ function renderCalendario() {
     var ganhosDia = null;
 
     if (historico[dataStr]) {
-      // Tem histórico real para este dia
       ganhosDia = historico[dataStr].porDia;
     } else if (isHoje) {
-      // Hoje: usa o valor atual
-      ganhosDia = porDiaAtual;
-    } else if (isFuturo && vencPorDia[dia]) {
-      // Futuro com vencimento: mostra estimativa
       ganhosDia = porDiaAtual;
     }
-    // Passado sem histórico ou futuro sem vencimento: null (não mostra)
+    // Futuro: não mostra nada
 
     var bg = 'var(--card2)';
     var borda = '1px solid var(--border)';
@@ -1343,8 +1337,8 @@ function renderCalendario() {
     }
 
     var ganhoStr = ganhosDia !== null ? fmtBRL(ganhosDia).replace('R$ ','') : '';
-    var ganhoColor = isHoje ? 'var(--yellow)' : isPassado ? 'var(--green)' : 'rgba(46,204,113,.5)';
-    var ganhoPrefix = (isFuturo && ganhosDia !== null) ? '~' : (ganhosDia !== null && !isFuturo) ? '+' : '';
+    var ganhoColor = isHoje ? 'var(--yellow)' : 'var(--green)';
+    var ganhoPrefix = ganhosDia !== null ? '+' : '';
 
     grid += '<div onclick="calDiaClick(\'' + dataStr + '\')" style="height:60px;background:'+bg+';border:'+borda+';border-radius:8px;padding:4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center">'
       +'<div style="font-size:13px;font-weight:'+(eHoje?'700':'400')+';color:'+corDia+'">'+dia+'</div>'
