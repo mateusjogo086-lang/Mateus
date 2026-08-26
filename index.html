@@ -130,8 +130,7 @@ input[type="date"]{min-height:44px;color-scheme:dark}
       <div class="app-icon">💰</div>
       <div><div class="app-name">MP Empréstimo</div><div class="app-sub">Gestão de empréstimos</div></div>
       <div style="margin-left:auto;display:flex;gap:6px">
-        <button onclick="exportarBackup()" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:7px 10px;color:var(--text);font-size:16px;cursor:pointer" title="Exportar Backup">💾</button>
-        <button onclick="restaurarAutoBackup()" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:7px 10px;color:var(--yellow);font-size:16px;cursor:pointer" title="Restaurar último backup">📂</button>
+        <button onclick="abrirMenuBackup()" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:7px 12px;color:var(--text);font-size:14px;font-weight:600;cursor:pointer" title="Backup">💾 Backup</button>
         <button onclick="atualizarApp()" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:7px 10px;color:var(--text);font-size:18px;cursor:pointer" title="Atualizar">🔄</button>
       </div>
     </div>
@@ -175,10 +174,9 @@ input[type="date"]{min-height:44px;color-scheme:dark}
       </div>
     </div>
   </div>
+  <div class="search-bar" style="margin:12px 16px 0;flex-shrink:0"><span style="color:var(--muted);font-size:16px">🔍</span><input type="text" id="search-quitados" placeholder="Buscar cliente..." oninput="renderQuitados()" style="background:none;border:none;outline:none;color:var(--text);font-size:14px;flex:1"></div>
   <div class="scroll-area" id="quitados-container"></div>
 </div>
-
-<!-- TAB DASHBOARD -->
 <div id="tab-dash" class="tab-content active">
   <div class="header">
     <div class="app-brand">
@@ -237,10 +235,11 @@ input[type="date"]{min-height:44px;color-scheme:dark}
   <div class="header">
     <div class="app-brand"><div class="app-icon">💰</div><div><div class="app-name">MP Empréstimo</div><div class="app-sub">Clientes</div></div></div>
     <button onclick="addCliente()" style="background:var(--green);color:#000;border:none;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:700;margin-top:8px;width:100%">+ Novo Cliente</button>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-      <button onclick="exportarBackup()" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer">💾 Exportar</button>
-      <button onclick="importarBackup()" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer">📂 Importar</button>
-    </div>
+
+  </div>
+  <div class="search-bar" style="margin:12px 16px 0;flex-shrink:0">
+    <span style="color:var(--muted);font-size:16px">🔍</span>
+    <input type="text" id="search-clientes" placeholder="Buscar cliente..." oninput="renderClientes()" style="background:none;border:none;outline:none;color:var(--text);font-size:14px;flex:1">
   </div>
   <div class="scroll-area" id="clientes-container" style="padding-top:12px"></div>
 </div>
@@ -260,7 +259,6 @@ input[type="date"]{min-height:44px;color-scheme:dark}
       </div>
       <button onclick="calNavMes(1)" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;color:var(--text);font-size:18px;cursor:pointer">›</button>
     </div>
-    <button onclick="reconstruirHistorico()" style="width:100%;margin-top:10px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px;color:var(--yellow);font-size:13px;font-weight:600;cursor:pointer">🔄 Reconstruir histórico dos lançamentos</button>
   </div>
   <div class="scroll-area">
     <!-- Resumo do mês -->
@@ -349,79 +347,51 @@ function salvar() {
   } catch(e) {}
 }
 
-function reconstruirHistorico() {
+function reconstruirHistoricoSilencioso() {
   try {
-    var historico = {};
+    var historico = JSON.parse(localStorage.getItem('mp_historico')||'{}');
     var hoje_str = new Date().toISOString().split('T')[0];
-    
-    // Pega todas as datas relevantes (inícios e vencimentos)
     var todasDatas = {};
     emprestimos.forEach(function(e) {
-      // Registra data de início
-      if (e.inicio) todasDatas[e.inicio] = true;
-      // Registra data de vencimento
-      if (e.vencimento) todasDatas[e.vencimento] = true;
-      // Registra data de pagamento
-      if (e.dataPagamento) todasDatas[e.dataPagamento] = true;
+      if(e.inicio) todasDatas[e.inicio] = true;
+      if(e.vencimento) todasDatas[e.vencimento] = true;
+      if(e.dataPagamento) todasDatas[e.dataPagamento] = true;
     });
-
-    // Para cada data, calcula o rendimento diário dos empréstimos ativos naquela data
     Object.keys(todasDatas).sort().forEach(function(dataStr) {
-      if (dataStr > hoje_str) return; // não processa datas futuras
-      
-      var dataRef = new Date(dataStr + 'T12:00:00');
-      
-      // Quais empréstimos estavam ativos nesta data?
+      if(dataStr > hoje_str) return;
+      if(historico[dataStr]) return; // já tem, não sobrescreve
+      var dataRef = new Date(dataStr+'T12:00:00');
       var ativosNaData = emprestimos.filter(function(e) {
-        var inicio = new Date(e.inicio + 'T12:00:00');
-        var fim = e.dataPagamento ? new Date(e.dataPagamento + 'T12:00:00') : new Date('2099-01-01');
+        var inicio = new Date(e.inicio+'T12:00:00');
+        var fim = e.dataPagamento ? new Date(e.dataPagamento+'T12:00:00') : new Date('2099-01-01');
         return inicio <= dataRef && dataRef <= fim;
       });
-
-      var porDiaCalc = ativosNaData.reduce(function(s, e) {
-        return s + e.principal * e.taxa / 100 / 30;
-      }, 0);
-      historico[dataStr] = {
-        porDia: porDiaCalc,
-        totalAtivos: ativosNaData.length,
-        totalCapital: ativosNaData.reduce(function(s,e){return s+e.principal;},0)
-      };
+      var porDiaCalc = ativosNaData.reduce(function(s,e){return s+e.principal*e.taxa/100/30;},0);
+      historico[dataStr] = {porDia:porDiaCalc, totalAtivos:ativosNaData.length, totalCapital:ativosNaData.reduce(function(s,e){return s+e.principal;},0)};
     });
-
-    // Preenche os dias entre as datas também
-    var datas = Object.keys(todasDatas).sort();
-    if (datas.length >= 2) {
-      for (var i = 0; i < datas.length - 1; i++) {
-        var inicio = new Date(datas[i] + 'T12:00:00');
-        var fim = new Date(datas[i+1] + 'T12:00:00');
-        var atual = new Date(inicio);
-        atual.setDate(atual.getDate() + 1);
-        
-        while (atual < fim) {
-          var ds = atual.toISOString().split('T')[0];
-          if (ds <= hoje_str && !historico[ds]) {
-            // Herda o valor do dia anterior
-            historico[ds] = historico[datas[i]] ? JSON.parse(JSON.stringify(historico[datas[i]])) : null;
-          }
-          atual.setDate(atual.getDate() + 1);
-        }
+    // Preenche dias entre datas
+    var datas = Object.keys(todasDatas).sort().filter(function(d){return d<=hoje_str;});
+    for(var i=0;i<datas.length-1;i++){
+      var cur = new Date(datas[i]+'T12:00:00');
+      var nxt = new Date(datas[i+1]+'T12:00:00');
+      cur.setDate(cur.getDate()+1);
+      while(cur<nxt){
+        var ds=cur.toISOString().split('T')[0];
+        if(!historico[ds] && ds<=hoje_str) historico[ds]=historico[datas[i]]?JSON.parse(JSON.stringify(historico[datas[i]])):null;
+        cur.setDate(cur.getDate()+1);
       }
     }
+    // Salva hoje
+    var ativosHoje=emprestimos.filter(function(e){return e.ativo;});
+    historico[hoje_str]={porDia:ativosHoje.reduce(function(s,e){return s+e.principal*e.taxa/100/30;},0),totalAtivos:ativosHoje.length,totalCapital:ativosHoje.reduce(function(s,e){return s+e.principal;},0)};
+    localStorage.setItem('mp_historico',JSON.stringify(historico));
+  } catch(e) {}
+}
 
-    // Salva também hoje
-    var ativosHoje = emprestimos.filter(function(e){return e.ativo;});
-    historico[hoje_str] = {
-      porDia: ativosHoje.reduce(function(s,e){return s+(e.valorParcela&&e.tipoBullet?0:e.principal*e.taxa/100/30);},0),
-      totalAtivos: ativosHoje.length,
-      totalCapital: ativosHoje.reduce(function(s,e){return s+e.principal;},0)
-    };
-
-    localStorage.setItem('mp_historico', JSON.stringify(historico));
-    alert('Histórico reconstruído com ' + Object.keys(historico).length + ' dias! ✅');
-    renderCalendario();
-  } catch(e) {
-    alert('Erro: ' + e.message);
-  }
+function reconstruirHistorico() {
+  reconstruirHistoricoSilencioso();
+  alert('Historico reconstruido! ✅');
+  renderCalendario();
 }
 
 function registrarRendimentoDia() {
@@ -589,44 +559,88 @@ function renderAtivos() {
     renderClientes(); return;
   }
 
+  // Agrupa por cliente
+  var grupos = {};
+  var ordem = [];
   doMes.forEach(function(e) {
-    var vh = calcValor(e);
-    var vf = calcValorFinal(e);
-    var pd = e.principal*e.taxa/100/30;
-    var va = vh+pd;
-    var dd = Math.max(0, diasEntre(e.inicio, hoje()));
-    var dv = diasVencer(e.vencimento);
-    var dueClass='due dok', dueTxt='📅 Vence em '+dv+' dias';
-    if (dv<0){dueClass='due ddanger';dueTxt='⚠️ Venceu há '+Math.abs(dv)+' dia'+(Math.abs(dv)!=1?'s':'');}
-    else if(dv===0){dueClass='due ddanger';dueTxt='⚠️ Vence HOJE!';}
-    else if(dv<=5){dueClass='due dwarn';dueTxt='⚡ Vence em '+dv+' dia'+(dv!=1?'s':'');}
-
-    var pbHtml = e.parcelaTotal ? '<span class="pb">'+e.parcelaAtual+'/'+e.parcelaTotal+'</span>' : '';
-    var obsHtml = e.obs ? '<div class="obs-txt">📝 '+e.obs+'</div>' : '';
-    var estornoHtml = e.snapshot ? '<div style="margin:0 14px 8px"><button class="btn" style="width:100%;background:rgba(243,156,18,.2);border:1px solid rgba(243,156,18,.4);color:var(--yellow)" onclick="estornarPagamento('+e.id+')">↩️ Estornar último pagamento</button></div>' : '';
-
-    // Valor hoje + por dia (oculto para parcelas fixas)
-    var valorBoxHtml = '<div class="lvb"><div><div class="vhl">Valor Hoje</div><div class="vh">'+fmtBRL(vh)+'</div>'
-      +(e.valorParcela?'':'<div class="va">Amanhã: '+fmtBRL(va)+'</div>')
-      +'</div>'
-      +(e.valorParcela?'':'<div><div class="pdl">Por Dia</div><div class="pd">'+fmtBRL(pd)+'</div></div>')
-      +'</div>';
-
-    // Valor final (só para empréstimos normais)
-    var valorFinalHtml = e.valorParcela?'':'<div style="margin:0 14px 8px;background:rgba(52,152,219,.1);border:1px solid rgba(52,152,219,.3);border-radius:10px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:11px;color:#3498db;text-transform:uppercase;letter-spacing:.5px">💰 Valor Final (30 dias)</div><div style="font-size:15px;font-weight:700;color:#3498db">'+fmtBRL(vf)+'</div></div>';
-
-    html += '<div class="lc">'
-      +'<div class="lh"><div class="ln">'+e.cliente+'</div><div class="ltr">'+pbHtml+'<div class="ld">⏱ '+dd+' dias</div><button class="link-btn" onclick="copiarLink('+e.id+')">🔗</button></div></div>'
-      +'<div class="dr"><div class="dc"><span class="dcl">📤 Emprestado:</span><span class="dcv">'+fmtData(e.inicio)+'</span></div><div class="dc"><span class="dcl">📥 Vence:</span><span class="dcv">'+fmtData(e.vencimento)+'</span></div></div>'
-      +'<div class="'+dueClass+'">'+dueTxt+'</div>'
-      +obsHtml+estornoHtml+valorBoxHtml+valorFinalHtml
-      +'<div class="li"><div><div class="il">Emprestado</div><div class="iv">'+fmtBRL(e.principalOriginal||e.principal)+'</div></div><div><div class="il">Já Pago</div><div class="iv" style="color:'+(e.pago>0?'var(--green)':'var(--text)')+'">'+fmtBRL(e.pago||0)+'</div></div><div><div class="il">Taxa</div><div class="iv">'+e.taxa+'%/mês</div></div></div>'
-      +'<div class="la"><button class="btn bg" onclick="pagarLoan('+e.id+')">💳 Pagar</button><button class="btn bd" onclick="abrirObs('+e.id+')">📝 Obs</button><button class="btn bd" onclick="editarLoan('+e.id+')">✏️ Editar</button><button class="btn br" onclick="deletarLoan('+e.id+')">🗑️ Deletar</button></div>'
-      +'</div>';
+    if (!grupos[e.cliente]) { grupos[e.cliente] = []; ordem.push(e.cliente); }
+    grupos[e.cliente].push(e);
   });
+
+  ordem.forEach(function(cliente) {
+    var lista = grupos[cliente];
+    var totalVh = lista.reduce(function(s,e){return s+calcValor(e);},0);
+    var totalPd = lista.reduce(function(s,e){return s+e.principal*e.taxa/100/30;},0);
+    var temVencido = lista.some(function(e){return diasVencer(e.vencimento)<0;});
+    var temUrgente = lista.some(function(e){var d=diasVencer(e.vencimento);return d>=0&&d<=5;});
+    var corBorda = temVencido?'var(--red)':temUrgente?'var(--yellow)':'var(--border)';
+    var primeiroId = lista[0].id;
+    var nEmp = lista.length;
+
+    // Card resumo do cliente
+    html += '<div class="lc" style="border-color:'+corBorda+'">'
+      +'<div class="lh" onclick="toggleCliente(this)" data-grp="grp-'+cliente.replace(/[^a-z0-9]/gi,'_')+'" style="cursor:pointer">'
+      +'<div><div class="ln">'+cliente+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+nEmp+' empréstimo'+(nEmp>1?'s':'')+' · clique para ver</div></div>'
+      +'<div class="ltr">'
+      +'<button class="link-btn" onclick="event.stopPropagation();copiarLink('+primeiroId+')">🔗</button>'
+      +'<span style="font-size:18px;color:var(--muted)" id="arr-'+cliente.replace(/[^a-z0-9]/gi,'_')+'">▼</span>'
+      +'</div></div>'
+      // Total do cliente
+      +'<div style="margin:0 14px 12px;background:linear-gradient(135deg,#0d2818,#152a1e);border-radius:12px;padding:12px 14px;border:1px solid rgba(46,204,113,.2);display:flex;justify-content:space-between;align-items:center">'
+      +'<div><div style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:.5px">Total hoje</div><div style="font-size:22px;font-weight:700;color:var(--green)">'+fmtBRL(totalVh)+'</div></div>'
+      +'<div style="text-align:right"><div style="font-size:10px;color:var(--muted)">Por dia</div><div style="font-size:16px;font-weight:700;color:var(--green)">'+fmtBRL(totalPd)+'</div></div>'
+      +'</div>'
+      // Empréstimos expandíveis
+      +'<div id="grp-'+cliente.replace(/[^a-z0-9]/gi,'_')+'" style="display:none">';
+
+    lista.forEach(function(e) {
+      var vh = calcValor(e);
+      var vf = calcValorFinal(e);
+      var pd = e.principal*e.taxa/100/30;
+      var va = vh+pd;
+      var dd = Math.max(0, diasEntre(e.inicio, hoje()));
+      var dv = diasVencer(e.vencimento);
+      var dueClass='due dok', dueTxt='📅 Vence em '+dv+' dias';
+      if(dv<0){dueClass='due ddanger';dueTxt='⚠️ Venceu há '+Math.abs(dv)+' dia'+(Math.abs(dv)!=1?'s':'');}
+      else if(dv===0){dueClass='due ddanger';dueTxt='⚠️ Vence HOJE!';}
+      else if(dv<=5){dueClass='due dwarn';dueTxt='⚡ Vence em '+dv+' dia'+(dv!=1?'s':'');}
+      var pbHtml = e.parcelaTotal?'<span class="pb">'+e.parcelaAtual+'/'+e.parcelaTotal+'</span>':'';
+      var obsHtml = e.obs?'<div class="obs-txt">📝 '+e.obs+'</div>':'';
+      var estornoHtml = e.snapshot?'<div style="margin:0 14px 8px"><button class="btn" style="width:100%;background:rgba(243,156,18,.2);border:1px solid rgba(243,156,18,.4);color:var(--yellow)" onclick="estornarPagamento('+e.id+')">↩️ Estornar</button></div>':'';
+      var valorBoxHtml='<div class="lvb"><div><div class="vhl">Valor Hoje</div><div class="vh">'+fmtBRL(vh)+'</div>'+(e.valorParcela?'':'<div class="va">Amanhã: '+fmtBRL(va)+'</div>')+'</div>'+(e.valorParcela?'':'<div><div class="pdl">Por Dia</div><div class="pd">'+fmtBRL(pd)+'</div></div>')+'</div>';
+      var valorFinalHtml=e.valorParcela?'':'<div style="margin:0 14px 8px;background:rgba(52,152,219,.1);border:1px solid rgba(52,152,219,.3);border-radius:10px;padding:8px 12px;display:flex;justify-content:space-between"><div style="font-size:11px;color:#3498db;text-transform:uppercase;letter-spacing:.5px">Valor Final (30 dias)</div><div style="font-size:15px;font-weight:700;color:#3498db">'+fmtBRL(vf)+'</div></div>';
+
+      html += '<div style="margin:0 10px 10px;background:var(--card2);border-radius:12px;border:1px solid var(--border);overflow:hidden">'
+        +'<div style="padding:10px 14px 6px;display:flex;justify-content:space-between;align-items:center">'
+        +pbHtml+'<div class="ld">⏱ '+dd+' dias</div></div>'
+        +'<div class="dr"><div class="dc"><span class="dcl">📤</span><span class="dcv">'+fmtData(e.inicio)+'</span></div><div class="dc"><span class="dcl">📥</span><span class="dcv">'+fmtData(e.vencimento)+'</span></div></div>'
+        +'<div class="'+dueClass+'" style="margin:0 14px 8px">'+dueTxt+'</div>'
+        +obsHtml+estornoHtml+valorBoxHtml+valorFinalHtml
+        +'<div class="li"><div><div class="il">Emprestado</div><div class="iv">'+fmtBRL(e.principalOriginal||e.principal)+'</div></div><div><div class="il">Já Pago</div><div class="iv" style="color:'+(e.pago>0?'var(--green)':'var(--text)')+'">'+fmtBRL(e.pago||0)+'</div></div><div><div class="il">Taxa</div><div class="iv">'+e.taxa+'%/mês</div></div></div>'
+        +'<div class="la"><button class="btn bg" onclick="pagarLoan('+e.id+')">💳 Pagar</button><button class="btn bd" onclick="abrirObs('+e.id+')">📝 Obs</button><button class="btn bd" onclick="editarLoan('+e.id+')">✏️ Editar</button><button class="btn br" onclick="deletarLoan('+e.id+')">🗑️ Deletar</button></div>'
+        +'</div>';
+    });
+
+    html += '</div></div>';
+  });
+
 
   document.getElementById('loans-container').innerHTML = html;
   renderClientes();
+}
+
+function toggleCliente(el) {
+  var grpId = el.getAttribute('data-grp');
+  var div = document.getElementById(grpId);
+  var arr = document.getElementById('arr-'+grpId.replace('grp-',''));
+  if (!div) return;
+  if (div.style.display === 'none') {
+    div.style.display = 'block';
+    if(arr) arr.textContent = '▲';
+  } else {
+    div.style.display = 'none';
+    if(arr) arr.textContent = '▼';
+  }
 }
 
 // ── AÇÕES
@@ -728,7 +742,8 @@ function estornarPagamento(id) {
 function renderQuitados() {
   var cont=document.getElementById('quitados-container');
   if(!cont) return;
-  var quitados=emprestimos.filter(function(e){return !e.ativo;});
+  var busca = (document.getElementById('search-quitados') ? document.getElementById('search-quitados').value || '' : '').toLowerCase();
+  var quitados = emprestimos.filter(function(e){return !e.ativo && e.cliente.toLowerCase().indexOf(busca)>=0;});
 
   // Stats
   var totalPago = quitados.reduce(function(s,e){return s+(e.pago||0);},0);
@@ -903,6 +918,7 @@ function enviarLinkConsulta(nomeCliente) {
     if(x.tipoBullet) d.b = 1;
     if(x.parcelaAtual) d.pa = x.parcelaAtual;
     if(x.parcelaTotal) d.pt = x.parcelaTotal;
+    if(x.principalOriginal) d.po = x.principalOriginal;
     return d;
   });
   var link = 'https://mateusjogo086-lang.github.io/Mateus/consulta.html?c='
@@ -937,15 +953,100 @@ function removerCliente(i) {
 function renderClientes() {
   var cont=document.getElementById('clientes-container');
   if(!cont) return;
+  var busca = (document.getElementById('search-clientes')?document.getElementById('search-clientes').value||'':'').toLowerCase();
   var html='';
-  clientes.forEach(function(c,i){
+  clientes.filter(function(c){return c.toLowerCase().indexOf(busca)>=0;}).forEach(function(c,i){
+    var idx = clientes.indexOf(c);
     var at=emprestimos.filter(function(e){return e.cliente===c&&e.ativo;});
     var tv=at.reduce(function(s,e){return s+calcValor(e);},0);
-    html+='<div class="ci"><div><div class="cn">'+c+'</div><div class="cs">'+at.length+' ativo'+(at.length!=1?'s':'')+(at.length?' · '+fmtBRL(tv):'')+'</div></div>'
+    html+='<div class="ci" style="flex-direction:column;align-items:stretch;gap:8px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between">'
+      +'<div><div class="cn">'+c+'</div><div class="cs">'+at.length+' ativo'+(at.length!=1?'s':'')+(at.length?' · '+fmtBRL(tv):'')+'</div></div>'
       +'<div style="display:flex;gap:6px;align-items:center"><div class="cb '+(at.length?'ba':'bi')+'">'+(at.length?'Ativo':'Inativo')+'</div>'
-      +'<button onclick="removerCliente('+i+')" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer">🗑️</button></div></div>';
+      +'<button onclick="removerCliente('+idx+')" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer">🗑️</button></div></div>'
+      +'<button onclick="abrirRelatorio(this.dataset.c)" data-c="'+c+'" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px;font-size:13px;font-weight:600;color:var(--green);cursor:pointer">📊 Ver relatório completo</button>'
+      +'</div>';
   });
   cont.innerHTML=html||'<div class="empty"><div class="empty-i">👤</div>Nenhum cliente.</div>';
+}
+
+function abrirRelatorio(cliente) {
+  var ativos = emprestimos.filter(function(e){return e.ativo && e.cliente===cliente;});
+  var quitados = emprestimos.filter(function(e){return !e.ativo && e.cliente===cliente;});
+  var todos = emprestimos.filter(function(e){return e.cliente===cliente;});
+
+  // Cálculos
+  var totalEmAberto = ativos.reduce(function(s,e){return s+calcValor(e);},0);
+  var totalCapitalAberto = ativos.reduce(function(s,e){return s+(e.principalOriginal||e.principal);},0);
+  var totalRecebido = quitados.reduce(function(s,e){return s+(e.pago||0);},0);
+  var totalEmprestadoQuitado = quitados.reduce(function(s,e){return s+(e.principalOriginal||e.principal);},0);
+  var lucroQuitado = totalRecebido - totalEmprestadoQuitado;
+  var porDia = ativos.reduce(function(s,e){return s+e.principal*e.taxa/100/30;},0);
+
+  var html = '';
+
+  // Resumo geral
+  html += '<div style="background:linear-gradient(135deg,#0d2818,#152a1e);border-radius:14px;padding:16px;border:1px solid rgba(46,204,113,.2);margin-bottom:14px">'
+    +'<div style="font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Resumo Geral</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    +'<div><div style="font-size:10px;color:var(--muted)">Em aberto hoje</div><div style="font-size:20px;font-weight:700;color:var(--green)">'+fmtBRL(totalEmAberto)+'</div></div>'
+    +'<div><div style="font-size:10px;color:var(--muted)">Capital em aberto</div><div style="font-size:20px;font-weight:700;color:var(--text)">'+fmtBRL(totalCapitalAberto)+'</div></div>'
+    +'<div><div style="font-size:10px;color:var(--muted)">Total recebido</div><div style="font-size:18px;font-weight:700;color:var(--green)">'+fmtBRL(totalRecebido)+'</div></div>'
+    +'<div><div style="font-size:10px;color:var(--muted)">Lucro total</div><div style="font-size:18px;font-weight:700;color:var(--yellow)">'+fmtBRL(lucroQuitado)+'</div></div>'
+    +'</div>'
+    +(porDia>0?'<div style="margin-top:10px;font-size:12px;color:var(--muted)">⚡ Rendendo '+fmtBRL(porDia)+' por dia</div>':'')
+    +'</div>';
+
+  // Stats rápidos
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">'
+    +'<div class="sc"><div class="sl">Em aberto</div><div class="sv" style="color:#3498db">'+ativos.length+'</div></div>'
+    +'<div class="sc"><div class="sl">Quitados</div><div class="sv g">'+quitados.length+'</div></div>'
+    +'<div class="sc"><div class="sl">Total</div><div class="sv">'+todos.length+'</div></div>'
+    +'</div>';
+
+  // Empréstimos em aberto
+  if(ativos.length) {
+    html += '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📋 Em Aberto</div>';
+    ativos.forEach(function(e){
+      var dv = diasVencer(e.vencimento);
+      var cor = dv<0?'var(--red)':dv<=5?'var(--yellow)':'var(--green)';
+      var dvTxt = dv<0?'Venceu há '+Math.abs(dv)+'d':dv===0?'HOJE!':'Em '+dv+' dias';
+      html += '<div style="background:var(--card2);border-radius:10px;padding:12px;margin-bottom:8px;border:1px solid var(--border)">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+        +'<div style="font-size:12px;color:var(--muted)">'+fmtData(e.inicio)+' → '+fmtData(e.vencimento)+'</div>'
+        +'<div style="font-size:12px;font-weight:600;color:'+cor+'">'+dvTxt+'</div>'
+        +'</div>'
+        +'<div style="display:flex;justify-content:space-between;align-items:center">'
+        +'<div><div style="font-size:11px;color:var(--muted)">Emprestado</div><div style="font-size:14px;font-weight:600">'+fmtBRL(e.principalOriginal||e.principal)+'</div></div>'
+        +'<div style="text-align:center"><div style="font-size:11px;color:var(--muted)">Taxa</div><div style="font-size:14px;font-weight:600">'+e.taxa+'%</div></div>'
+        +'<div style="text-align:right"><div style="font-size:11px;color:var(--muted)">Valor hoje</div><div style="font-size:14px;font-weight:700;color:var(--green)">'+fmtBRL(calcValor(e))+'</div></div>'
+        +'</div>'
+        +(e.obs?'<div style="font-size:11px;color:var(--yellow);margin-top:6px">📝 '+e.obs+'</div>':'')
+        +'</div>';
+    });
+  }
+
+  // Empréstimos quitados
+  if(quitados.length) {
+    html += '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">✅ Quitados</div>';
+    quitados.forEach(function(e){
+      var lucro = (e.pago||0) - (e.principalOriginal||e.principal);
+      html += '<div style="background:var(--card2);border-radius:10px;padding:12px;margin-bottom:8px;border:1px solid var(--border);opacity:0.8">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+        +'<div style="font-size:12px;color:var(--muted)">'+fmtData(e.inicio)+'</div>'
+        +'<div style="font-size:11px;color:var(--green);font-weight:600">✅ Quitado'+( e.dataPagamento?' em '+fmtData(e.dataPagamento):'')+'</div>'
+        +'</div>'
+        +'<div style="display:flex;justify-content:space-between;align-items:center">'
+        +'<div><div style="font-size:11px;color:var(--muted)">Emprestado</div><div style="font-size:14px;font-weight:600">'+fmtBRL(e.principalOriginal||e.principal)+'</div></div>'
+        +'<div style="text-align:center"><div style="font-size:11px;color:var(--muted)">Recebido</div><div style="font-size:14px;font-weight:600;color:var(--green)">'+fmtBRL(e.pago||0)+'</div></div>'
+        +'<div style="text-align:right"><div style="font-size:11px;color:var(--muted)">Lucro</div><div style="font-size:14px;font-weight:700;color:var(--yellow)">'+fmtBRL(lucro)+'</div></div>'
+        +'</div></div>';
+    });
+  }
+
+  document.getElementById('rel-titulo').textContent = '📊 '+cliente;
+  document.getElementById('rel-body').innerHTML = html;
+  document.getElementById('modal-relatorio').classList.add('open');
 }
 
 // ── FORMULÁRIO
@@ -963,12 +1064,22 @@ function atualizarPreview() {
   var box=document.getElementById('parcelas-preview-box');
   if(!valor||!taxa||!inicio){box.classList.add('hidden');return;}
   if(!on) {
+  if(!on) {
     var venc=document.getElementById('f-vencimento').value;
     if(!venc){box.classList.add('hidden');return;}
-    var total=valor+valor*(taxa/100);
+    var inicioDate = new Date(inicio+'T12:00:00');
+    var vencDate = new Date(venc+'T12:00:00');
+    var dias = Math.max(1, Math.floor((vencDate - inicioDate) / 86400000));
+    var taxaDia = taxa/100/30;
+    var total = valor * (1 + taxaDia * dias);
+    var lucro = total - valor;
     box.classList.remove('hidden');
-    document.getElementById('parcelas-preview-lista').innerHTML='<div class="ppi"><div><div class="ppm">1 parcela · '+fmtData(venc)+'</div></div><div class="ppv">'+fmtBRL(total)+'</div></div>';
-  } else {
+    var aviso = '';
+    if(dias > 30) aviso = '<div style="font-size:11px;color:var(--yellow);margin-top:6px;padding:6px 8px;background:rgba(243,156,18,.1);border-radius:8px">⚠️ '+dias+' dias — juros calculados proporcionalmente</div>';
+    else if(dias < 30) aviso = '<div style="font-size:11px;color:#3498db;margin-top:6px;padding:6px 8px;background:rgba(52,152,219,.1);border-radius:8px">ℹ️ '+dias+' dias — menos que 30 dias</div>';
+    document.getElementById('parcelas-preview-lista').innerHTML=
+      '<div class="ppi"><div><div class="ppm">'+fmtData(venc)+'</div><div class="ppd">'+dias+' dias · '+fmtBRL(lucro)+' de juros</div></div><div class="ppv">'+fmtBRL(total)+'</div></div>'+aviso;
+  }   } else {
     var np=parseInt(document.getElementById('f-parcelas').value)||0;
     if(np<2){box.classList.add('hidden');return;}
     var bullet=document.getElementById('toggle-bullet').checked;
@@ -1137,6 +1248,13 @@ function drawLineChart(id,labels,data) {
 }
 
 // ── BACKUP
+function abrirMenuBackup() {
+  var dataBackup = localStorage.getItem('mp_autobackup_data');
+  var el = document.getElementById('backup-data-info');
+  if(el) el.textContent = dataBackup ? 'Último backup automático: '+dataBackup : 'Nenhum backup automático encontrado';
+  document.getElementById('modal-backup').classList.add('open');
+}
+
 function exportarBackup() {
   var backup={versao:'1.0',data:new Date().toISOString(),emprestimos:emprestimos,clientes:clientes,nextId:nextId};
   var json=JSON.stringify(backup,null,2);
@@ -1188,48 +1306,60 @@ function fecharCalculadora() {
 function calcular() {
   var valor = parseFloat(document.getElementById('calc-valor').value)||0;
   var taxa = parseFloat(document.getElementById('calc-taxa').value)||0;
-  var meses = parseInt(document.getElementById('calc-meses').value)||1;
+  var meses = parseInt(document.getElementById('calc-meses').value)||0;
+  var diasExtras = parseInt(document.getElementById('calc-dias').value)||0;
   var tipo = document.getElementById('calc-tipo').value;
   var res = document.getElementById('calc-resultado');
   var parcelasBox = document.getElementById('calc-parcelas-box');
 
   if (!valor || !taxa) { res.style.display='none'; return; }
 
+  var totalDias = meses*30 + diasExtras;
+  if(totalDias <= 0) totalDias = 30;
+  if(meses <= 0) meses = 1;
+
+  var prazoTxt = '';
+  if(meses>0 && diasExtras>0) prazoTxt = meses+' mes'+(meses>1?'es':'')+' e '+diasExtras+' dias = '+totalDias+' dias total';
+  else if(diasExtras>0) prazoTxt = diasExtras+' dias';
+  else prazoTxt = meses+' mes'+(meses>1?'es':'')+' = '+totalDias+' dias';
+  var el = document.getElementById('calc-prazo-label');
+  if(el) el.textContent = prazoTxt;
+
   res.style.display = 'block';
+  var taxaDia = taxa/100/30;
+  var porDia = valor * taxaDia;
   var jurosMensal = valor * (taxa/100);
-  var porDia = valor * taxa/100/30;
   var total, lucro, parcelasHtml = '';
 
   if (tipo === 'simples') {
-    total = valor + jurosMensal * meses;
+    total = valor * (1 + taxaDia * totalDias);
     lucro = total - valor;
     parcelasBox.style.display = 'none';
 
   } else if (tipo === 'parcelas') {
-    var jurosTotal = valor * (taxa/100) * meses;
-    total = valor + jurosTotal;
+    var jurosTotal = valor*(taxa/100)*meses;
+    total = valor+jurosTotal;
     lucro = jurosTotal;
-    var vp = total / meses;
+    var vp = total/meses;
     parcelasBox.style.display = 'block';
     parcelasHtml = '';
-    for(var i=1; i<=meses; i++) {
+    for(var i=1;i<=meses;i++){
       parcelasHtml += '<div style="display:flex;justify-content:space-between;align-items:center;background:var(--card2);border-radius:8px;padding:8px 12px;margin-bottom:6px">'
         +'<div style="font-size:13px;font-weight:600">Parcela '+i+'/'+meses+'</div>'
         +'<div style="font-size:13px;font-weight:700;color:var(--green)">'+fmtBRL(vp)+'</div>'
         +'</div>';
     }
 
-  } else { // bullet
-    total = jurosMensal * meses + valor;
-    lucro = jurosMensal * meses;
+  } else {
+    total = jurosMensal*meses+valor;
+    lucro = jurosMensal*meses;
     parcelasBox.style.display = 'block';
     parcelasHtml = '';
-    for(var i=1; i<=meses; i++) {
-      var isUlt = i===meses;
-      var vParc = isUlt ? jurosMensal + valor : jurosMensal;
-      var tipo_txt = isUlt ? '🏁 Juros + Capital' : '📅 Só Juros';
+    for(var i=1;i<=meses;i++){
+      var isUlt=i===meses;
+      var vParc=isUlt?jurosMensal+valor:jurosMensal;
       parcelasHtml += '<div style="display:flex;justify-content:space-between;align-items:center;background:var(--card2);border-radius:8px;padding:8px 12px;margin-bottom:6px">'
-        +'<div><div style="font-size:13px;font-weight:600">Mês '+i+'</div><div style="font-size:11px;color:var(--muted)">'+tipo_txt+'</div></div>'
+        +'<div><div style="font-size:13px;font-weight:600">Mes '+i+'</div><div style="font-size:11px;color:var(--muted)">'+(isUlt?'Juros + Capital':'So Juros')+'</div></div>'
         +'<div style="font-size:13px;font-weight:700;color:'+(isUlt?'var(--yellow)':'var(--green)')+'">'+fmtBRL(vParc)+'</div>'
         +'</div>';
     }
@@ -1241,6 +1371,7 @@ function calcular() {
   document.getElementById('calc-retorno').textContent = (lucro/valor*100).toFixed(1)+'%';
   if(parcelasHtml) document.getElementById('calc-parcelas-lista').innerHTML = parcelasHtml;
 }
+
 
 // ── CALENDÁRIO
 var calMesAtual = new Date().getMonth();
@@ -1417,7 +1548,11 @@ function calDiaClick(dataStr) {
   var partes = dataStr.split('-');
   var dataFormatada = partes[2]+'/'+partes[1]+'/'+partes[0];
   
+  // Só abre se tiver histórico ou vencimento
   if(!hist && !venc.length) return;
+  // Dias futuros sem vencimento: não abre
+  var hoje_check = new Date().toISOString().split('T')[0];
+  if(dataStr > hoje_check && !venc.length) return;
 
   var html = '';
   
@@ -1454,10 +1589,9 @@ function switchTab(tab,el) {
   if(tab==='dash') setTimeout(renderDash,100);
   if(tab==='quitados') setTimeout(renderQuitados,50);
   if(tab==='cal') setTimeout(function(){
-    // Reconstrói histórico automaticamente na primeira vez
-    var hist = localStorage.getItem('mp_historico');
-    if(!hist || Object.keys(JSON.parse(hist)).length < 2) reconstruirHistorico();
-    else renderCalendario();
+    // Reconstrói silenciosamente sempre que abre
+    reconstruirHistoricoSilencioso();
+    renderCalendario();
   },50);
 }
 
@@ -1523,8 +1657,18 @@ setInterval(checarNotif,3600000);
       <input type="number" id="calc-taxa" placeholder="Ex: 30" value="30" oninput="calcular()">
     </div>
     <div class="mfg">
-      <label class="mfl">📅 Quantidade de Meses</label>
-      <input type="number" id="calc-meses" placeholder="Ex: 3" value="1" min="1" oninput="calcular()">
+      <label class="mfl">📅 Prazo</label>
+      <div class="fr">
+        <div>
+          <label class="mfl">Meses</label>
+          <input type="number" id="calc-meses" placeholder="Ex: 1" value="1" min="0" oninput="calcular()">
+        </div>
+        <div>
+          <label class="mfl">Dias extras</label>
+          <input type="number" id="calc-dias" placeholder="Ex: 15" value="0" min="0" oninput="calcular()">
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px" id="calc-prazo-label"></div>
     </div>
     <div class="mfg">
       <label class="mfl">💡 Tipo de cobrança</label>
@@ -1578,6 +1722,31 @@ setInterval(checarNotif,3600000);
       <button onclick="document.getElementById('modal-info-dia').classList.remove('open')" style="background:var(--card2);border:none;color:var(--muted);border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer">✕</button>
     </div>
     <div id="info-dia-body"></div>
+  </div>
+</div>
+
+<!-- MODAL RELATORIO CLIENTE -->
+<div id="modal-relatorio" class="modal">
+  <div class="modal-box" style="max-height:88vh;overflow-y:auto">
+    <div class="modal-title">
+      <div class="modal-tit" id="rel-titulo">📊 Relatório</div>
+      <button class="modal-close" onclick="document.getElementById('modal-relatorio').classList.remove('open')">✕</button>
+    </div>
+    <div id="rel-body"></div>
+  </div>
+</div>
+
+<!-- MODAL BACKUP -->
+<div id="modal-backup" class="modal">
+  <div class="modal-box">
+    <div class="modal-title">
+      <div class="modal-tit">💾 Backup</div>
+      <button class="modal-close" onclick="document.getElementById('modal-backup').classList.remove('open')">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px" id="backup-data-info"></div>
+    <button onclick="exportarBackup();document.getElementById('modal-backup').classList.remove('open')" style="width:100%;background:var(--green);color:#000;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px">💾 Exportar backup (salvar arquivo)</button>
+    <button onclick="importarBackup();document.getElementById('modal-backup').classList.remove('open')" style="width:100%;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:10px">📂 Importar backup (carregar arquivo)</button>
+    <button onclick="restaurarAutoBackup();document.getElementById('modal-backup').classList.remove('open')" style="width:100%;background:var(--card2);color:var(--yellow);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:14px;font-weight:600;cursor:pointer">🔄 Restaurar último backup automático</button>
   </div>
 </div>
 
