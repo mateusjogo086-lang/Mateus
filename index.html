@@ -440,18 +440,9 @@ function diasEntre(d1s, d2) {
   return Math.floor((d2 - new Date(d1s+'T12:00:00')) / 86400000);
 }
 function calcValor(e) {
-  // Para parcelas bullet: mostra o valorParcela fixo direto (não cresce por dia)
-  if (e.valorParcela && e.tipoBullet) {
-    return e.valorParcela;
-  }
-  // Para parcelas iguais: cresce diariamente mas para no teto
-  if (e.valorParcela) {
-    var dias = Math.max(0, diasEntre(e.inicio, hoje()));
-    var vDiario = e.principal * (1 + (e.taxa/100/30) * dias);
-    return Math.min(vDiario, e.valorParcela);
-  }
-  var dias = Math.max(0, diasEntre(e.inicio, hoje()));
-  return e.principal * (1 + (e.taxa/100/30) * dias);
+  // Valor sempre fixo — calculado pela taxa mensal, não por dias
+  if (e.valorParcela) return e.valorParcela;
+  return e.principal * (1 + e.taxa/100);
 }
 function calcValorFinal(e) {
   // Valor final esperado no vencimento (30 dias)
@@ -607,13 +598,13 @@ function renderAtivos() {
       var pbHtml = e.parcelaTotal?'<span class="pb">'+e.parcelaAtual+'/'+e.parcelaTotal+'</span>':'';
       var obsHtml = e.obs?'<div class="obs-txt">📝 '+e.obs+'</div>':'';
       var estornoHtml = e.snapshot?'<div style="margin:0 14px 8px"><button class="btn" style="width:100%;background:rgba(243,156,18,.2);border:1px solid rgba(243,156,18,.4);color:var(--yellow)" onclick="estornarPagamento('+e.id+')">↩️ Estornar</button></div>':'';
-      var valorBoxHtml='<div class="lvb"><div><div class="vhl">Valor Hoje</div><div class="vh">'+fmtBRL(vh)+'</div>'+(e.valorParcela?'':'<div class="va">Amanhã: '+fmtBRL(va)+'</div>')+'</div>'+(e.valorParcela?'':'<div><div class="pdl">Por Dia</div><div class="pd">'+fmtBRL(pd)+'</div></div>')+'</div>';
-      var valorFinalHtml=e.valorParcela?'':'<div style="margin:0 14px 8px;background:rgba(52,152,219,.1);border:1px solid rgba(52,152,219,.3);border-radius:10px;padding:8px 12px;display:flex;justify-content:space-between"><div style="font-size:11px;color:#3498db;text-transform:uppercase;letter-spacing:.5px">Valor Final (30 dias)</div><div style="font-size:15px;font-weight:700;color:#3498db">'+fmtBRL(vf)+'</div></div>';
+      var valorBoxHtml='<div class="lvb"><div><div class="vhl">Valor a Receber</div><div class="vh">'+fmtBRL(vh)+'</div><div class="va">Vence: '+fmtData(e.vencimento)+'</div></div></div>';
+      var valorFinalHtml='';
 
       html += '<div style="margin:0 10px 10px;background:var(--card2);border-radius:12px;border:1px solid var(--border);overflow:hidden">'
         +'<div style="padding:10px 14px 6px;display:flex;justify-content:space-between;align-items:center">'
         +pbHtml+'<div class="ld">⏱ '+dd+' dias</div></div>'
-        +'<div class="dr"><div class="dc"><span class="dcl">📤</span><span class="dcv">'+fmtData(e.inicio)+'</span></div><div class="dc"><span class="dcl">📥</span><span class="dcv">'+fmtData(e.vencimento)+'</span></div></div>'
+        +'<div class="dr"><div class="dc"><span class="dcl">📤</span><span class="dcv">'+fmtData(e.inicio)+'</span></div><div class="dc"><span class="dcl">📥</span><span class="dcv">'+fmtData(e.vencimento)+'</span></div><div class="dc"><span class="dcl">📆</span><span class="dcv">'+dd+' dias</span></div></div>'
         +'<div class="'+dueClass+'" style="margin:0 14px 8px">'+dueTxt+'</div>'
         +obsHtml+estornoHtml+valorBoxHtml+valorFinalHtml
         +'<div class="li"><div><div class="il">Emprestado</div><div class="iv">'+fmtBRL(e.principalOriginal||e.principal)+'</div></div><div><div class="il">Já Pago</div><div class="iv" style="color:'+(e.pago>0?'var(--green)':'var(--text)')+'">'+fmtBRL(e.pago||0)+'</div></div><div><div class="il">Taxa</div><div class="iv">'+e.taxa+'%/mês</div></div></div>'
@@ -1070,16 +1061,16 @@ function atualizarPreview() {
     var inicioDate = new Date(inicio+'T12:00:00');
     var vencDate = new Date(venc+'T12:00:00');
     var dias = Math.max(1, Math.floor((vencDate - inicioDate) / 86400000));
-    var taxaDia = taxa/100/30;
-    var total = valor * (1 + taxaDia * dias);
+    var total = valor * (1 + taxa/100); // Valor fixo baseado na taxa mensal
     var lucro = total - valor;
     box.classList.remove('hidden');
-    var aviso = '';
-    if(dias > 30) aviso = '<div style="font-size:11px;color:var(--yellow);margin-top:6px;padding:6px 8px;background:rgba(243,156,18,.1);border-radius:8px">⚠️ '+dias+' dias — juros calculados proporcionalmente</div>';
-    else if(dias < 30) aviso = '<div style="font-size:11px;color:#3498db;margin-top:6px;padding:6px 8px;background:rgba(52,152,219,.1);border-radius:8px">ℹ️ '+dias+' dias — menos que 30 dias</div>';
+    var aviso = '<div style="font-size:11px;color:var(--muted);margin-top:6px;padding:6px 8px;background:rgba(30,30,30,.5);border-radius:8px">📅 '+dias+' dias até o vencimento</div>';
     document.getElementById('parcelas-preview-lista').innerHTML=
       '<div class="ppi"><div><div class="ppm">'+fmtData(venc)+'</div><div class="ppd">'+dias+' dias · '+fmtBRL(lucro)+' de juros</div></div><div class="ppv">'+fmtBRL(total)+'</div></div>'+aviso;
   }   } else {
+    var np=parseInt(document.getElementById('f-parcelas').value)||0;
+    if(np<2){box.classList.add('hidden');return;}
+    var bullet=document.getElementById('toggle-bullet').checked;
     var np=parseInt(document.getElementById('f-parcelas').value)||0;
     if(np<2){box.classList.add('hidden');return;}
     var bullet=document.getElementById('toggle-bullet').checked;
