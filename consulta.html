@@ -32,6 +32,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .pix-box{background:#1c2430;border-radius:12px;padding:12px 14px;border:1px solid #30363d;margin-top:12px;text-align:center}
 .pix-label{font-size:11px;color:#8b949e;margin-bottom:4px}
 .pix-val{font-size:16px;font-weight:700;color:#2ecc71}
+.rodape{text-align:center;font-size:11px;color:#8b949e;margin-top:12px;padding-bottom:20px}
 .error{text-align:center;padding:60px 20px}
 .error-icon{font-size:48px;margin-bottom:12px}
 .error-txt{font-size:15px;color:#8b949e}
@@ -46,78 +47,87 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div id="conteudo"></div>
 </div>
 <script>
-function fmtBRL(n){return 'R$ '+Number(n).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
-function fmtData(s){if(!s)return '';var p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
-function hoje(){return new Date();}
-function diasEntre(d1s,d2){return Math.floor((d2-new Date(d1s+'T12:00:00'))/86400000);}
-function diasVencer(s){return Math.ceil((new Date(s+'T12:00:00')-hoje())/86400000);}
+function fmtBRL(n){
+  return 'R$ '+Number(n).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+}
+function fmtData(s){
+  if(!s) return '';
+  var p=s.split('-');
+  return p[2]+'/'+p[1]+'/'+p[0];
+}
+function diasVencer(s){
+  var hoje=new Date();
+  hoje.setHours(0,0,0,0);
+  var venc=new Date(s+'T00:00:00');
+  return Math.round((venc-hoje)/86400000);
+}
 
+// Valor FIXO — igual ao app principal
+// e.vp = valorParcela fixo (parcelas ou bullet)
+// sem vp: principal * (1 + taxa/100)
 function calcValor(e) {
-  // Bullet: valor fixo
-  if (e.vp && e.b) return e.vp;
-  // Parcela fixa: cresce até o teto
-  if (e.vp) {
-    var dias = Math.max(0, diasEntre(e.i, hoje()));
-    var vd = e.p * (1 + (e.t/100/30) * dias);
-    return Math.min(vd, e.vp);
-  }
-  var dias = Math.max(0, diasEntre(e.i, hoje()));
-  return e.p * (1 + (e.t/100/30) * dias);
+  if (e.vp) return Number(e.vp);
+  return Number(e.p) * (1 + Number(e.t) / 100);
 }
 
-function calcValorFinal(e) {
-  if (e.vp) return e.vp;
-  return e.p * (1 + e.t/100);
-}
-
-// Pega parâmetros — suporta formato novo (c,d) e antigo (cliente,dados)
 var params = new URLSearchParams(window.location.search);
 var cliente = params.get('c') || params.get('cliente');
 var dadosStr = params.get('d') || params.get('dados');
 var cont = document.getElementById('conteudo');
 
 if (!cliente || !dadosStr) {
-  cont.innerHTML = '<div class="error"><div class="error-icon">🔒</div><div class="error-txt">Link inválido ou expirado.</div></div>';
+  cont.innerHTML = '<div class="error"><div class="error-icon">🔒</div><div class="error-txt">Link inválido ou expirado.<br><small>Peça um novo link ao seu credor.</small></div></div>';
 } else {
   try {
     var emprestimos = JSON.parse(decodeURIComponent(escape(atob(dadosStr))));
-    var dataHoje = hoje().toLocaleDateString('pt-BR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-    var totalHoje = emprestimos.reduce(function(s,e){return s+calcValor(e);},0);
-    var porDia = emprestimos.reduce(function(s,e){return s+(e.vp?0:e.p*e.t/100/30);},0);
+    var dataHoje = new Date().toLocaleDateString('pt-BR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    var totalGeral = emprestimos.reduce(function(s,e){ return s + calcValor(e); }, 0);
 
     var html = '<div class="nome">'+cliente+'</div>'
       +'<div class="data">📅 '+dataHoje+'</div>'
       +'<div class="total-box">'
-      +'<div class="total-label">Total em aberto hoje</div>'
-      +'<div class="total-val">'+fmtBRL(totalHoje)+'</div>'
-      +(porDia>0?'<div class="total-sub">⚡ '+fmtBRL(porDia)+' por dia · '+emprestimos.length+' empréstimo'+(emprestimos.length>1?'s':'')+'</div>':'<div class="total-sub">'+emprestimos.length+' empréstimo'+(emprestimos.length>1?'s':'')+'</div>')
+      +'<div class="total-label">Total em aberto</div>'
+      +'<div class="total-val">'+fmtBRL(totalGeral)+'</div>'
+      +'<div class="total-sub">'+emprestimos.length+' empréstimo'+(emprestimos.length>1?'s':'')+'</div>'
       +'</div>';
 
     emprestimos.forEach(function(e, idx) {
       var vh = calcValor(e);
-      var vf = calcValorFinal(e);
-      var pd = e.p * e.t / 100 / 30;
       var dv = diasVencer(e.v);
-      var cor = dv<0?'#e74c3c':dv<=5?'#f39c12':'#2ecc71';
-      var dvTxt = dv<0?'⚠️ Venceu há '+Math.abs(dv)+' dias':dv===0?'⚠️ Vence HOJE!':'📅 Vence em '+dv+' dias';
-      var titulo = emprestimos.length>1?'Empréstimo '+(idx+1)+(e.pt?' — Parcela '+e.pa+'/'+e.pt:''):'';
+      var cor = dv < 0 ? '#e74c3c' : dv === 0 ? '#f39c12' : dv <= 5 ? '#f39c12' : '#2ecc71';
+      var dvTxt = dv < 0
+        ? '⚠️ Venceu há ' + Math.abs(dv) + ' dia'+(Math.abs(dv)>1?'s':'')
+        : dv === 0
+          ? '⚠️ Vence HOJE!'
+          : '📅 Vence em ' + dv + ' dia'+(dv>1?'s':'');
+
+      var titulo = '';
+      if (emprestimos.length > 1) {
+        titulo = 'Empréstimo ' + (idx + 1);
+        if (e.pt) titulo += ' — Parcela ' + e.pa + '/' + e.pt;
+      }
 
       html += '<div class="emp-card">';
-      if(titulo) html += '<div class="emp-title">'+titulo+'</div>';
-      html += '<div class="due" style="background:'+cor+'22;border:1px solid '+cor+'55;color:'+cor+'">'+dvTxt+' ('+fmtData(e.v)+')</div>';
+      if (titulo) html += '<div class="emp-title">'+titulo+'</div>';
+      html += '<div class="due" style="background:'+cor+'22;border:1px solid '+cor+'55;color:'+cor+'">'
+        +dvTxt+' ('+fmtData(e.v)+')</div>';
       html += '<div class="val-box">'
-        +'<div class="val-label">Valor hoje</div>'
+        +'<div class="val-label">Valor a pagar</div>'
         +'<div class="val">'+fmtBRL(vh)+'</div>'
-        +(e.vp?'':'<div class="val-sub">Valor final: '+fmtBRL(vf)+' · Por dia: '+fmtBRL(pd)+'</div>')
+        +(e.vp ? '<div class="val-sub">Parcela fixa</div>' : '<div class="val-sub">Emprestado R$'+Number(e.po||e.p).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.')+' + '+e.t+'% ao mês</div>')
         +'</div>';
       html += '<div class="info-grid">'
-        +'<div class="info-item"><div class="info-label">Emprestado</div><div class="info-val">'+fmtBRL(e.p)+'</div></div>'
+        +'<div class="info-item"><div class="info-label">Emprestado</div><div class="info-val">'+fmtBRL(e.po||e.p)+'</div></div>'
         +'<div class="info-item"><div class="info-label">Taxa</div><div class="info-val">'+e.t+'%/mês</div></div>'
         +'</div></div>';
     });
 
-    html += '<div class="pix-box"><div class="pix-label">💳 PIX para pagamento</div><div class="pix-val">40161279805</div></div>';
-    html += '<div style="text-align:center;font-size:11px;color:#8b949e;margin-top:12px">🔄 Atualizado automaticamente todo dia</div>';
+    html += '<div class="pix-box">'
+      +'<div class="pix-label">💳 PIX para pagamento</div>'
+      +'<div class="pix-val">40161279805</div>'
+      +'</div>';
+    html += '<div class="rodape">Este extrato é apenas informativo.<br>Os valores são definidos no momento do empréstimo.</div>';
+
     cont.innerHTML = html;
   } catch(err) {
     cont.innerHTML = '<div class="error"><div class="error-icon">❌</div><div class="error-txt">Erro ao carregar dados.<br><small>'+err.message+'</small></div></div>';
