@@ -647,8 +647,28 @@ function pagarLoan(id) {
   document.getElementById('pag-resto').textContent = '';
   document.getElementById('pag-outros').style.display = 'none';
   document.getElementById('pag-outros-lista').innerHTML = '';
+  var bj = document.getElementById('pag-sojuros');
+  if (e.valorParcela) { bj.style.display = 'none'; }
+  else { bj.style.display = 'block'; bj.textContent = '💰 Pagou só o juros ('+fmtBRL(jurosDoMes(e))+')'; }
   document.getElementById('modal-pagar').classList.add('open');
   setTimeout(function(){document.getElementById('pag-valor').focus();},100);
+}
+
+function addMes(s) {
+  var d = new Date(s+'T12:00:00');
+  var dia = d.getDate();
+  d.setDate(1); d.setMonth(d.getMonth()+1);
+  var ult = new Date(d.getFullYear(), d.getMonth()+1, 0, 12).getDate();
+  d.setDate(Math.min(dia, ult));
+  return d.toISOString().split('T')[0];
+}
+function jurosDoMes(e) { return e.principal*e.taxa/100; }
+function pagarSoJuros() {
+  var id = parseInt(document.getElementById('pag-id').value);
+  var e = emprestimos.find(function(x){return x.id===id;});
+  if (!e) return;
+  document.getElementById('pag-valor').value = jurosDoMes(e).toFixed(2);
+  calcPagamentoResto();
 }
 
 function calcPagamentoResto() {
@@ -662,7 +682,16 @@ function calcPagamentoResto() {
   var outrosLista = document.getElementById('pag-outros-lista');
   outrosDiv.style.display='none'; outrosLista.innerHTML='';
   if (recebido<=0){el.textContent='';return;}
-  if (recebido<vh-0.01){el.innerHTML='<span style="color:var(--yellow)">⚡ Saldo restante: '+fmtBRL(vh-recebido)+'</span>';return;}
+  if (recebido<vh-0.01){
+    var jm=vh-e.principal;
+    if (!e.valorParcela && recebido>=jm-0.01) {
+      var novoP=Math.max(0,e.principal-(recebido-jm));
+      el.innerHTML='<span style="color:var(--yellow)">🔄 Juros pago. Passa para '+fmtData(addMes(e.vencimento))+' com '+fmtBRL(novoP*(1+e.taxa/100))+' a pagar</span>';
+    } else {
+      el.innerHTML='<span style="color:var(--yellow)">⚡ Saldo restante: '+fmtBRL(vh-recebido)+'</span>';
+    }
+    return;
+  }
   var sobra = recebido-vh;
   if (sobra<=0.01){el.innerHTML='<span style="color:var(--green)">✅ Quita totalmente!</span>';return;}
   var outros = emprestimos.filter(function(x){return x.ativo&&x.id!==id&&x.cliente===e.cliente;});
@@ -694,7 +723,7 @@ function confirmarPagamento() {
   var maxPermitido = vh + outros.reduce(function(s,o){return s+calcValor(o);},0);
   if (recebido>maxPermitido+0.01){document.getElementById('pag-resto').innerHTML='<span style="color:var(--red)">⚠️ Máximo: '+fmtBRL(maxPermitido)+'</span>';return;}
   // Snapshot para estorno
-  e.snapshot={principal:e.principal,pago:e.pago||0,inicio:e.inicio,ativo:e.ativo,dataPagamento:e.dataPagamento||null,valorParcela:e.valorParcela||null};
+  e.snapshot={principal:e.principal,pago:e.pago||0,inicio:e.inicio,ativo:e.ativo,dataPagamento:e.dataPagamento||null,valorParcela:e.valorParcela||null,vencimento:e.vencimento,nPag:(e.pagamentos||[]).length};
   if (recebido>=vh-0.01) {
     e.pago=(e.pago||0)+recebido; e.ativo=false; e.dataPagamento=dataPag;
     // Próxima parcela do grupo
@@ -708,7 +737,7 @@ function confirmarPagamento() {
       outros.forEach(function(o){
         if (sobra<=0.01) return;
         var vho=calcValor(o);
-        o.snapshot={principal:o.principal,pago:o.pago||0,inicio:o.inicio,ativo:o.ativo,dataPagamento:o.dataPagamento||null,valorParcela:o.valorParcela||null};
+        o.snapshot={principal:o.principal,pago:o.pago||0,inicio:o.inicio,ativo:o.ativo,dataPagamento:o.dataPagamento||null,valorParcela:o.valorParcela||null,vencimento:o.vencimento,nPag:(o.pagamentos||[]).length};
         if (sobra>=vho-0.01){o.pago=(o.pago||0)+vho;o.ativo=false;o.dataPagamento=dataPag;sobra-=vho;}
         else{o.pago=(o.pago||0)+sobra;if(o.valorParcela){o.valorParcela=Math.max(0,o.valorParcela-sobra);}else{var j=vho-o.principal;o.principal=Math.max(0,o.principal-(sobra>j?sobra-j:0));}o.inicio=dataPag;sobra=0;}
       });
@@ -717,7 +746,14 @@ function confirmarPagamento() {
     e.pago=(e.pago||0)+recebido;
     var j=vh-e.principal; var ab=recebido>j?recebido-j:0;
     e.principal=Math.max(0,e.principal-ab); e.inicio=dataPag;
+    // Pagou pelo menos o juros: o mês está pago, passa o vencimento para o mês seguinte
+    if (!e.valorParcela && recebido>=j-0.01) {
+      e.vencimento=addMes(e.vencimento);
+      mesSelecionado=getMesChave(e.vencimento);
+    }
   }
+  if (!e.pagamentos) e.pagamentos=[];
+  e.pagamentos.push({data:dataPag,valor:recebido});
   fecharModalPagar(); salvar(); renderAtivos(); renderQuitados();
 }
 
@@ -727,6 +763,8 @@ function estornarPagamento(id) {
   e.principal=e.snapshot.principal; e.pago=e.snapshot.pago; e.inicio=e.snapshot.inicio;
   e.ativo=e.snapshot.ativo; e.dataPagamento=e.snapshot.dataPagamento;
   if(e.snapshot.valorParcela!==undefined) e.valorParcela=e.snapshot.valorParcela;
+  if(e.snapshot.vencimento) e.vencimento=e.snapshot.vencimento;
+  if(e.pagamentos && e.snapshot.nPag!==undefined) e.pagamentos.length=e.snapshot.nPag;
   e.snapshot=null; salvar(); renderAtivos(); renderQuitados();
 }
 
@@ -1748,7 +1786,7 @@ setInterval(checarNotif,3600000);
 <div id="modal-prompt" class="modal"><div class="modal-box"><div class="modal-tit" id="mp-titulo" style="margin-bottom:4px"></div><div style="font-size:13px;color:var(--green);font-weight:600;margin-bottom:14px" id="mp-sub"></div><input type="text" id="mp-input" placeholder="Digite aqui..." style="margin-bottom:14px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button onclick="fecharMP()" style="background:var(--card2);border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer">Cancelar</button><button id="mp-ok" style="background:var(--green);border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:600;color:#000;cursor:pointer">Salvar</button></div></div></div>
 
 <!-- MODAL PAGAR -->
-<div id="modal-pagar" class="modal"><div class="modal-box"><div class="modal-title"><div class="modal-tit">💳 Registrar Pagamento</div><button class="modal-close" onclick="fecharModalPagar()">✕</button></div><div style="font-size:13px;color:var(--green);font-weight:600;margin-bottom:2px" id="pag-cliente"></div><div style="font-size:12px;color:var(--muted);margin-bottom:14px">Total hoje: <span id="pag-total" style="color:var(--text);font-weight:600"></span></div><input type="hidden" id="pag-id"><div class="mfg"><label class="mfl">Valor Recebido (R$)</label><input type="number" id="pag-valor" placeholder="0,00" oninput="calcPagamentoResto()"></div><div class="mfg"><label class="mfl">Data do Pagamento</label><input type="date" id="pag-data"></div><div style="font-size:13px;margin-bottom:8px;font-weight:600" id="pag-resto"></div><div id="pag-outros" style="display:none;margin-bottom:12px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📋 Outros empréstimos deste cliente</div><div id="pag-outros-lista"></div></div><button onclick="confirmarPagamento()" style="width:100%;background:var(--green);color:#000;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">Confirmar Pagamento</button><button onclick="fecharModalPagar()" style="width:100%;background:var(--card2);color:var(--text);border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button></div></div>
+<div id="modal-pagar" class="modal"><div class="modal-box"><div class="modal-title"><div class="modal-tit">💳 Registrar Pagamento</div><button class="modal-close" onclick="fecharModalPagar()">✕</button></div><div style="font-size:13px;color:var(--green);font-weight:600;margin-bottom:2px" id="pag-cliente"></div><div style="font-size:12px;color:var(--muted);margin-bottom:14px">Total hoje: <span id="pag-total" style="color:var(--text);font-weight:600"></span></div><input type="hidden" id="pag-id"><div class="mfg"><label class="mfl">Valor Recebido (R$)</label><input type="number" id="pag-valor" placeholder="0,00" oninput="calcPagamentoResto()"></div><button id="pag-sojuros" onclick="pagarSoJuros()" style="display:none;width:100%;background:rgba(243,156,18,.15);border:1px solid rgba(243,156,18,.4);color:var(--yellow);border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;margin:-4px 0 12px"></button><div class="mfg"><label class="mfl">Data do Pagamento</label><input type="date" id="pag-data"></div><div style="font-size:13px;margin-bottom:8px;font-weight:600" id="pag-resto"></div><div id="pag-outros" style="display:none;margin-bottom:12px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📋 Outros empréstimos deste cliente</div><div id="pag-outros-lista"></div></div><button onclick="confirmarPagamento()" style="width:100%;background:var(--green);color:#000;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">Confirmar Pagamento</button><button onclick="fecharModalPagar()" style="width:100%;background:var(--card2);color:var(--text);border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button></div></div>
 
 <!-- MODAL EDITAR -->
 <div id="modal-editar" class="modal"><div class="modal-box"><div class="modal-title"><div class="modal-tit">✏️ Editar Empréstimo</div><button class="modal-close" onclick="fecharModal()">✕ Fechar</button></div><div style="font-size:13px;color:var(--green);font-weight:600;margin-bottom:14px" id="edit-cliente-nome"></div><input type="hidden" id="edit-id"><div class="mrow"><div><label class="mfl">Valor Principal</label><input type="number" id="edit-valor"></div><div><label class="mfl">Taxa %/mês</label><input type="number" id="edit-taxa"></div></div><div class="mfg"><label class="mfl">Data de Início</label><input type="date" id="edit-inicio"></div><div class="mfg"><label class="mfl">Data de Vencimento</label><input type="date" id="edit-vencimento"></div><div class="mfg"><label class="mfl">Valor já Pago</label><input type="number" id="edit-pago"></div><div class="mfg"><label class="mfl">Observação</label><input type="text" id="edit-obs" placeholder="Ex: combinou pagar na sexta..."></div><button onclick="salvarEdicao()" style="width:100%;background:var(--green);color:#000;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;margin-top:6px">✅ Salvar Alterações</button></div></div>
