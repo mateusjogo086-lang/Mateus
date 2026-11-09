@@ -558,6 +558,13 @@ function renderAtivos() {
     grupos[e.cliente].push(e);
   });
 
+  // Ordena clientes por vencimento mais próximo (menor diasVencer primeiro)
+  ordem.sort(function(a, b) {
+    var dvA = Math.min.apply(null, grupos[a].map(function(e){ return diasVencer(e.vencimento); }));
+    var dvB = Math.min.apply(null, grupos[b].map(function(e){ return diasVencer(e.vencimento); }));
+    return dvA - dvB;
+  });
+
   ordem.forEach(function(cliente) {
     var lista = grupos[cliente];
     var totalVh = lista.reduce(function(s,e){return s+calcValor(e);},0);
@@ -568,17 +575,37 @@ function renderAtivos() {
     var primeiroId = lista[0].id;
     var nEmp = lista.length;
 
+    // Data de vencimento mais próxima do cliente
+    var dvMin = Math.min.apply(null, lista.map(function(e){ return diasVencer(e.vencimento); }));
+    var empMaisProximo = lista.reduce(function(acc, e) {
+      return diasVencer(e.vencimento) < diasVencer(acc.vencimento) ? e : acc;
+    }, lista[0]);
+    var corDv = dvMin < 0 ? 'var(--red)' : dvMin === 0 ? 'var(--yellow)' : dvMin <= 5 ? 'var(--yellow)' : 'var(--muted)';
+    var txtDv = dvMin < 0
+      ? '⚠️ Venceu há '+Math.abs(dvMin)+' dia'+(Math.abs(dvMin)!=1?'s':'')+' ('+fmtData(empMaisProximo.vencimento)+')'
+      : dvMin === 0
+        ? '⚠️ Vence HOJE! ('+fmtData(empMaisProximo.vencimento)+')'
+        : dvMin <= 5
+          ? '⚡ Vence em '+dvMin+' dias ('+fmtData(empMaisProximo.vencimento)+')'
+          : '📅 '+fmtData(empMaisProximo.vencimento)+' · em '+dvMin+' dias';
+    var subtitulo = nEmp > 1
+      ? nEmp+' empréstimos · ' + txtDv
+      : txtDv;
+
     // Card resumo do cliente
     html += '<div class="lc" style="border-color:'+corBorda+'">'
       +'<div class="lh" onclick="toggleCliente(this)" data-grp="grp-'+cliente.replace(/[^a-z0-9]/gi,'_')+'" style="cursor:pointer">'
-      +'<div><div class="ln">'+cliente+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+nEmp+' empréstimo'+(nEmp>1?'s':'')+' · clique para ver</div></div>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div class="ln">'+cliente+'</div>'
+      +'<div style="font-size:11px;color:'+corDv+';margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+subtitulo+'</div>'
+      +'</div>'
       +'<div class="ltr">'
       +'<button class="link-btn" onclick="event.stopPropagation();copiarLink('+primeiroId+')">🔗</button>'
       +'<span style="font-size:18px;color:var(--muted)" id="arr-'+cliente.replace(/[^a-z0-9]/gi,'_')+'">▼</span>'
       +'</div></div>'
       // Total do cliente
       +'<div style="margin:0 14px 12px;background:linear-gradient(135deg,#0d2818,#152a1e);border-radius:12px;padding:12px 14px;border:1px solid rgba(46,204,113,.2);display:flex;justify-content:space-between;align-items:center">'
-      +'<div><div style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:.5px">Total hoje</div><div style="font-size:22px;font-weight:700;color:var(--green)">'+fmtBRL(totalVh)+'</div></div>'
+      +'<div><div style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:.5px">Total a receber</div><div style="font-size:22px;font-weight:700;color:var(--green)">'+fmtBRL(totalVh)+'</div></div>'
       +'<div style="text-align:right"><div style="font-size:10px;color:var(--muted)">Por dia</div><div style="font-size:16px;font-weight:700;color:var(--green)">'+fmtBRL(totalPd)+'</div></div>'
       +'</div>'
       // Empréstimos expandíveis
@@ -647,28 +674,8 @@ function pagarLoan(id) {
   document.getElementById('pag-resto').textContent = '';
   document.getElementById('pag-outros').style.display = 'none';
   document.getElementById('pag-outros-lista').innerHTML = '';
-  var bj = document.getElementById('pag-sojuros');
-  if (e.valorParcela) { bj.style.display = 'none'; }
-  else { bj.style.display = 'block'; bj.textContent = '💰 Pagou só o juros ('+fmtBRL(jurosDoMes(e))+')'; }
   document.getElementById('modal-pagar').classList.add('open');
   setTimeout(function(){document.getElementById('pag-valor').focus();},100);
-}
-
-function addMes(s) {
-  var d = new Date(s+'T12:00:00');
-  var dia = d.getDate();
-  d.setDate(1); d.setMonth(d.getMonth()+1);
-  var ult = new Date(d.getFullYear(), d.getMonth()+1, 0, 12).getDate();
-  d.setDate(Math.min(dia, ult));
-  return d.toISOString().split('T')[0];
-}
-function jurosDoMes(e) { return e.principal*e.taxa/100; }
-function pagarSoJuros() {
-  var id = parseInt(document.getElementById('pag-id').value);
-  var e = emprestimos.find(function(x){return x.id===id;});
-  if (!e) return;
-  document.getElementById('pag-valor').value = jurosDoMes(e).toFixed(2);
-  calcPagamentoResto();
 }
 
 function calcPagamentoResto() {
@@ -682,16 +689,7 @@ function calcPagamentoResto() {
   var outrosLista = document.getElementById('pag-outros-lista');
   outrosDiv.style.display='none'; outrosLista.innerHTML='';
   if (recebido<=0){el.textContent='';return;}
-  if (recebido<vh-0.01){
-    var jm=vh-e.principal;
-    if (!e.valorParcela && recebido>=jm-0.01) {
-      var novoP=Math.max(0,e.principal-(recebido-jm));
-      el.innerHTML='<span style="color:var(--yellow)">🔄 Juros pago. Passa para '+fmtData(addMes(e.vencimento))+' com '+fmtBRL(novoP*(1+e.taxa/100))+' a pagar</span>';
-    } else {
-      el.innerHTML='<span style="color:var(--yellow)">⚡ Saldo restante: '+fmtBRL(vh-recebido)+'</span>';
-    }
-    return;
-  }
+  if (recebido<vh-0.01){el.innerHTML='<span style="color:var(--yellow)">⚡ Saldo restante: '+fmtBRL(vh-recebido)+'</span>';return;}
   var sobra = recebido-vh;
   if (sobra<=0.01){el.innerHTML='<span style="color:var(--green)">✅ Quita totalmente!</span>';return;}
   var outros = emprestimos.filter(function(x){return x.ativo&&x.id!==id&&x.cliente===e.cliente;});
@@ -723,7 +721,7 @@ function confirmarPagamento() {
   var maxPermitido = vh + outros.reduce(function(s,o){return s+calcValor(o);},0);
   if (recebido>maxPermitido+0.01){document.getElementById('pag-resto').innerHTML='<span style="color:var(--red)">⚠️ Máximo: '+fmtBRL(maxPermitido)+'</span>';return;}
   // Snapshot para estorno
-  e.snapshot={principal:e.principal,pago:e.pago||0,inicio:e.inicio,ativo:e.ativo,dataPagamento:e.dataPagamento||null,valorParcela:e.valorParcela||null,vencimento:e.vencimento,nPag:(e.pagamentos||[]).length};
+  e.snapshot={principal:e.principal,pago:e.pago||0,inicio:e.inicio,ativo:e.ativo,dataPagamento:e.dataPagamento||null,valorParcela:e.valorParcela||null};
   if (recebido>=vh-0.01) {
     e.pago=(e.pago||0)+recebido; e.ativo=false; e.dataPagamento=dataPag;
     // Próxima parcela do grupo
@@ -737,7 +735,7 @@ function confirmarPagamento() {
       outros.forEach(function(o){
         if (sobra<=0.01) return;
         var vho=calcValor(o);
-        o.snapshot={principal:o.principal,pago:o.pago||0,inicio:o.inicio,ativo:o.ativo,dataPagamento:o.dataPagamento||null,valorParcela:o.valorParcela||null,vencimento:o.vencimento,nPag:(o.pagamentos||[]).length};
+        o.snapshot={principal:o.principal,pago:o.pago||0,inicio:o.inicio,ativo:o.ativo,dataPagamento:o.dataPagamento||null,valorParcela:o.valorParcela||null};
         if (sobra>=vho-0.01){o.pago=(o.pago||0)+vho;o.ativo=false;o.dataPagamento=dataPag;sobra-=vho;}
         else{o.pago=(o.pago||0)+sobra;if(o.valorParcela){o.valorParcela=Math.max(0,o.valorParcela-sobra);}else{var j=vho-o.principal;o.principal=Math.max(0,o.principal-(sobra>j?sobra-j:0));}o.inicio=dataPag;sobra=0;}
       });
@@ -746,14 +744,7 @@ function confirmarPagamento() {
     e.pago=(e.pago||0)+recebido;
     var j=vh-e.principal; var ab=recebido>j?recebido-j:0;
     e.principal=Math.max(0,e.principal-ab); e.inicio=dataPag;
-    // Pagou pelo menos o juros: o mês está pago, passa o vencimento para o mês seguinte
-    if (!e.valorParcela && recebido>=j-0.01) {
-      e.vencimento=addMes(e.vencimento);
-      mesSelecionado=getMesChave(e.vencimento);
-    }
   }
-  if (!e.pagamentos) e.pagamentos=[];
-  e.pagamentos.push({data:dataPag,valor:recebido});
   fecharModalPagar(); salvar(); renderAtivos(); renderQuitados();
 }
 
@@ -763,8 +754,6 @@ function estornarPagamento(id) {
   e.principal=e.snapshot.principal; e.pago=e.snapshot.pago; e.inicio=e.snapshot.inicio;
   e.ativo=e.snapshot.ativo; e.dataPagamento=e.snapshot.dataPagamento;
   if(e.snapshot.valorParcela!==undefined) e.valorParcela=e.snapshot.valorParcela;
-  if(e.snapshot.vencimento) e.vencimento=e.snapshot.vencimento;
-  if(e.pagamentos && e.snapshot.nPag!==undefined) e.pagamentos.length=e.snapshot.nPag;
   e.snapshot=null; salvar(); renderAtivos(); renderQuitados();
 }
 
@@ -1431,18 +1420,52 @@ function renderCalendario() {
 
   // Label do mês
   document.getElementById('cal-mes-label').textContent = MESES_FULL[mes] + ' ' + ano;
-  var porDiaDash = emprestimos.filter(function(e){return e.ativo;}).reduce(function(s,e){
-    return s + e.principal*e.taxa/100/30;
-  },0);
-  document.getElementById('cal-pordia').textContent = fmtBRL(porDiaDash);
 
   // Empréstimos com vencimento neste mês
   var vencMes = emprestimos.filter(function(e){
     var d = new Date(e.vencimento+'T12:00:00');
     return e.ativo && d.getMonth()===mes && d.getFullYear()===ano;
   });
+
+  // ── CARDS DO MÊS NAVEGADO ──────────────────────────────────────
+  var eMesAtual = (mes === hoje_mes && ano === hoje_ano);
+  var eMesFuturo = (ano > hoje_ano || (ano === hoje_ano && mes > hoje_mes));
+  var eMesPassado = !eMesAtual && !eMesFuturo;
+
+  if (eMesAtual) {
+    // Mês atual: mostra rendimento diário dos ativos agora
+    document.getElementById('cal-pordia').textContent = fmtBRL(porDiaAtual);
+  } else if (eMesFuturo) {
+    // Mês futuro: mostra rendimento diário esperado (dos que vencem naquele mês)
+    var porDiaFut = vencMes.reduce(function(s,e){return s+e.principal*e.taxa/100/30;},0);
+    document.getElementById('cal-pordia').textContent = fmtBRL(porDiaFut);
+  } else {
+    // Mês passado: mostra média do histórico ou zero
+    var diasDoMes = new Date(ano, mes+1, 0).getDate();
+    var somaHistMes = 0, contHistMes = 0;
+    for (var hd=1; hd<=diasDoMes; hd++) {
+      var hStr = String(ano)+'-'+String(mes+1).padStart(2,'0')+'-'+String(hd).padStart(2,'0');
+      if (historico[hStr] && historico[hStr].porDia) { somaHistMes += historico[hStr].porDia; contHistMes++; }
+    }
+    document.getElementById('cal-pordia').textContent = contHistMes>0 ? fmtBRL(somaHistMes/contHistMes) : 'R$ 0,00';
+  }
+
+  // Total do mês = soma dos valores a receber dos empréstimos que vencem neste mês
+  var totalDoMes = vencMes.reduce(function(s,e){return s+calcValor(e);},0);
+
+  // Para mês passado, se tiver histórico, usa o ganho real registrado
+  if (eMesPassado) {
+    var diasDoMesP = new Date(ano, mes+1, 0).getDate();
+    var ganhoRealMes = 0, temHistMes = false;
+    for (var hd2=1; hd2<=diasDoMesP; hd2++) {
+      var hStr2 = String(ano)+'-'+String(mes+1).padStart(2,'0')+'-'+String(hd2).padStart(2,'0');
+      if (historico[hStr2] && historico[hStr2].porDia) { ganhoRealMes += historico[hStr2].porDia; temHistMes = true; }
+    }
+    if (temHistMes) totalDoMes = ganhoRealMes;
+  }
+
   document.getElementById('cal-venc-count').textContent = vencMes.length;
-  document.getElementById('cal-total-mes').textContent = fmtBRL(porDiaAtual*30);
+  document.getElementById('cal-total-mes').textContent = fmtBRL(totalDoMes);
   document.getElementById('cal-mes-total').textContent = vencMes.length+' vencimento'+(vencMes.length!=1?'s':'');
 
   // Total ganho até hoje — calcula direto dos empréstimos
@@ -1786,7 +1809,7 @@ setInterval(checarNotif,3600000);
 <div id="modal-prompt" class="modal"><div class="modal-box"><div class="modal-tit" id="mp-titulo" style="margin-bottom:4px"></div><div style="font-size:13px;color:var(--green);font-weight:600;margin-bottom:14px" id="mp-sub"></div><input type="text" id="mp-input" placeholder="Digite aqui..." style="margin-bottom:14px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button onclick="fecharMP()" style="background:var(--card2);border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer">Cancelar</button><button id="mp-ok" style="background:var(--green);border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:600;color:#000;cursor:pointer">Salvar</button></div></div></div>
 
 <!-- MODAL PAGAR -->
-<div id="modal-pagar" class="modal"><div class="modal-box"><div class="modal-title"><div class="modal-tit">💳 Registrar Pagamento</div><button class="modal-close" onclick="fecharModalPagar()">✕</button></div><div style="font-size:13px;color:var(--green);font-weight:600;margin-bottom:2px" id="pag-cliente"></div><div style="font-size:12px;color:var(--muted);margin-bottom:14px">Total hoje: <span id="pag-total" style="color:var(--text);font-weight:600"></span></div><input type="hidden" id="pag-id"><div class="mfg"><label class="mfl">Valor Recebido (R$)</label><input type="number" id="pag-valor" placeholder="0,00" oninput="calcPagamentoResto()"></div><button id="pag-sojuros" onclick="pagarSoJuros()" style="display:none;width:100%;background:rgba(243,156,18,.15);border:1px solid rgba(243,156,18,.4);color:var(--yellow);border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;margin:-4px 0 12px"></button><div class="mfg"><label class="mfl">Data do Pagamento</label><input type="date" id="pag-data"></div><div style="font-size:13px;margin-bottom:8px;font-weight:600" id="pag-resto"></div><div id="pag-outros" style="display:none;margin-bottom:12px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📋 Outros empréstimos deste cliente</div><div id="pag-outros-lista"></div></div><button onclick="confirmarPagamento()" style="width:100%;background:var(--green);color:#000;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">Confirmar Pagamento</button><button onclick="fecharModalPagar()" style="width:100%;background:var(--card2);color:var(--text);border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button></div></div>
+<div id="modal-pagar" class="modal"><div class="modal-box"><div class="modal-title"><div class="modal-tit">💳 Registrar Pagamento</div><button class="modal-close" onclick="fecharModalPagar()">✕</button></div><div style="font-size:13px;color:var(--green);font-weight:600;margin-bottom:2px" id="pag-cliente"></div><div style="font-size:12px;color:var(--muted);margin-bottom:14px">Total hoje: <span id="pag-total" style="color:var(--text);font-weight:600"></span></div><input type="hidden" id="pag-id"><div class="mfg"><label class="mfl">Valor Recebido (R$)</label><input type="number" id="pag-valor" placeholder="0,00" oninput="calcPagamentoResto()"></div><div class="mfg"><label class="mfl">Data do Pagamento</label><input type="date" id="pag-data"></div><div style="font-size:13px;margin-bottom:8px;font-weight:600" id="pag-resto"></div><div id="pag-outros" style="display:none;margin-bottom:12px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📋 Outros empréstimos deste cliente</div><div id="pag-outros-lista"></div></div><button onclick="confirmarPagamento()" style="width:100%;background:var(--green);color:#000;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">Confirmar Pagamento</button><button onclick="fecharModalPagar()" style="width:100%;background:var(--card2);color:var(--text);border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button></div></div>
 
 <!-- MODAL EDITAR -->
 <div id="modal-editar" class="modal"><div class="modal-box"><div class="modal-title"><div class="modal-tit">✏️ Editar Empréstimo</div><button class="modal-close" onclick="fecharModal()">✕ Fechar</button></div><div style="font-size:13px;color:var(--green);font-weight:600;margin-bottom:14px" id="edit-cliente-nome"></div><input type="hidden" id="edit-id"><div class="mrow"><div><label class="mfl">Valor Principal</label><input type="number" id="edit-valor"></div><div><label class="mfl">Taxa %/mês</label><input type="number" id="edit-taxa"></div></div><div class="mfg"><label class="mfl">Data de Início</label><input type="date" id="edit-inicio"></div><div class="mfg"><label class="mfl">Data de Vencimento</label><input type="date" id="edit-vencimento"></div><div class="mfg"><label class="mfl">Valor já Pago</label><input type="number" id="edit-pago"></div><div class="mfg"><label class="mfl">Observação</label><input type="text" id="edit-obs" placeholder="Ex: combinou pagar na sexta..."></div><button onclick="salvarEdicao()" style="width:100%;background:var(--green);color:#000;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;margin-top:6px">✅ Salvar Alterações</button></div></div>
