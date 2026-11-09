@@ -1464,10 +1464,14 @@ function renderCalendario() {
     if (temHistMes) totalDoMes = ganhoRealMes;
   }
 
-  // Lucro do mês = total a receber - capital dos empréstimos que vencem neste mês
+  // Lucro do mês = juros dos empréstimos que vencem neste mês
+  // principal * taxa/100 = juros fixos combinados no empréstimo
   var lucroDoMes = eMesPassado && temHistMes
-    ? totalDoMes  // mês passado com histórico: tudo já é lucro (juros acumulados)
-    : vencMes.reduce(function(s,e){ return s + (calcValor(e) - (e.principalOriginal||e.principal)); }, 0);
+    ? totalDoMes - vencMes.reduce(function(s,e){ return s + (e.principalOriginal||e.principal); }, 0)
+    : vencMes.reduce(function(s,e){
+        var cap = e.principalOriginal || e.principal;
+        return s + (calcValor(e) - cap);
+      }, 0);
 
   document.getElementById('cal-venc-count').textContent = vencMes.length;
   document.getElementById('cal-total-mes').textContent = fmtBRL(totalDoMes);
