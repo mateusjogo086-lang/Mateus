@@ -1719,8 +1719,9 @@ function renderRelatorio() {
 
   var totalRec = lista.reduce(function(s,e){ return s + calcValor(e); }, 0);
   var totalLuc = lista.reduce(function(s,e){
-    var cap = e.principalOriginal || e.principal;
-    return s + (calcValor(e) - cap);
+    // Lucro = taxa × capital original emprestado
+    var cap = e.principalOriginal || e.capital || e.principal;
+    return s + cap * e.taxa / 100;
   }, 0);
   var atCount = todos.filter(function(e){ return e.ativo; }).length;
   var qtCount = todos.filter(function(e){ return !e.ativo; }).length;
@@ -1737,9 +1738,9 @@ function renderRelatorio() {
 
   var html = '';
   lista.forEach(function(e) {
-    var cap = e.principalOriginal || e.principal;
+    var cap = e.principalOriginal || e.capital || e.principal;
     var val = calcValor(e);
-    var lucro = val - cap;
+    var lucro = cap * e.taxa / 100;
     var dv = diasVencer(e.vencimento);
     var isAtivo = e.ativo;
     var corStatus = isAtivo ? 'var(--green)' : 'var(--muted)';
