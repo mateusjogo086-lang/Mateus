@@ -1431,8 +1431,9 @@ function calNavMes(dir) {
   renderCalendario();
 }
 
+var MESES_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
 function renderCalendario() {
-  var MESES_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   var mes = calMesAtual;
   var ano = calAnoAtual;
   var hoje_d = new Date();
