@@ -292,12 +292,41 @@ input[type="date"]{min-height:44px;color-scheme:dark}
   </div>
 </div>
 
+<!-- ABA RELATÓRIO -->
+<div id="tab-relatorio" class="tab-content">
+  <div class="header" style="padding:12px 16px 14px;flex-shrink:0">
+    <div class="app-brand"><div class="app-icon">📊</div><div><div class="app-name">MP Empréstimo</div><div class="app-sub">Relatório mensal</div></div></div>
+    <!-- Seletor de mês -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;background:var(--card2);border-radius:12px;border:1px solid var(--border);padding:8px 14px">
+      <button onclick="relNavMes(-1)" style="background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:0 8px">‹</button>
+      <div style="text-align:center"><div style="font-size:15px;font-weight:700" id="rel-mes-label">-</div></div>
+      <button onclick="relNavMes(1)" style="background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:0 8px">›</button>
+    </div>
+    <!-- Filtro -->
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button id="rel-btn-todos" onclick="relFiltro('todos')" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--green);background:var(--green);color:#000;font-size:12px;font-weight:700;cursor:pointer">Todos</button>
+      <button id="rel-btn-ativos" onclick="relFiltro('ativos')" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:12px;font-weight:700;cursor:pointer">Ativos</button>
+      <button id="rel-btn-quitados" onclick="relFiltro('quitados')" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:12px;font-weight:700;cursor:pointer">Quitados</button>
+    </div>
+  </div>
+  <!-- Totais -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:10px 16px 0;flex-shrink:0">
+    <div class="sc"><div class="sl">📋 Total</div><div class="sv" id="rel-count" style="color:#3498db">0</div><div style="font-size:10px;color:var(--muted);margin-top:2px" id="rel-count-sub">empréstimos</div></div>
+    <div class="sc"><div class="sl">💰 A receber</div><div class="sv g" id="rel-total">R$ 0</div></div>
+    <div class="sc"><div class="sl">💸 Lucro</div><div class="sv g" id="rel-lucro">R$ 0</div></div>
+  </div>
+  <div class="scroll-area" style="padding-top:8px">
+    <div id="rel-lista"></div>
+  </div>
+</div>
+
 <!-- BOTTOM NAV -->
-<nav class="bottom-nav" style="grid-template-columns:repeat(6,1fr)">
+<nav class="bottom-nav" style="grid-template-columns:repeat(7,1fr)">
   <button class="ni" onclick="switchTab('ativos',this)"><span class="nii">📋</span><span>Ativos</span></button>
   <button class="ni" onclick="switchTab('quitados',this)"><span class="nic">✓</span><span>Quitados</span></button>
   <button class="ni active" onclick="switchTab('dash',this)"><span class="nii">📊</span><span>Dashboard</span></button>
   <button class="ni" onclick="switchTab('cal',this)"><span class="nii">📅</span><span>Agenda</span></button>
+  <button class="ni" onclick="switchTab('relatorio',this)"><span class="nii">📈</span><span>Relatório</span></button>
   <button class="ni" onclick="switchTab('novo',this)"><span class="nii">＋</span><span>Novo</span></button>
   <button class="ni" onclick="switchTab('clientes',this)"><span class="nii">👤</span><span>Clientes</span></button>
 </nav>
@@ -1640,10 +1669,101 @@ function switchTab(tab,el) {
   if(tab==='dash') setTimeout(renderDash,100);
   if(tab==='quitados') setTimeout(renderQuitados,50);
   if(tab==='cal') setTimeout(function(){
-    // Reconstrói silenciosamente sempre que abre
     reconstruirHistoricoSilencioso();
     renderCalendario();
   },50);
+  if(tab==='relatorio') setTimeout(renderRelatorio,50);
+}
+
+// ── RELATÓRIO MENSAL ──────────────────────────────────────────
+var relMesAtual = new Date().getMonth();
+var relAnoAtual = new Date().getFullYear();
+var relFiltroAtual = 'todos';
+
+function relNavMes(dir) {
+  relMesAtual += dir;
+  if (relMesAtual < 0) { relMesAtual = 11; relAnoAtual--; }
+  if (relMesAtual > 11) { relMesAtual = 0; relAnoAtual++; }
+  renderRelatorio();
+}
+
+function relFiltro(tipo) {
+  relFiltroAtual = tipo;
+  ['todos','ativos','quitados'].forEach(function(t) {
+    var btn = document.getElementById('rel-btn-'+t);
+    if (!btn) return;
+    if (t === tipo) {
+      btn.style.background = 'var(--green)'; btn.style.color = '#000'; btn.style.borderColor = 'var(--green)';
+    } else {
+      btn.style.background = 'transparent'; btn.style.color = 'var(--text)'; btn.style.borderColor = 'var(--border)';
+    }
+  });
+  renderRelatorio();
+}
+
+function renderRelatorio() {
+  var mes = relMesAtual, ano = relAnoAtual;
+  document.getElementById('rel-mes-label').textContent = MESES_FULL[mes] + ' ' + ano;
+
+  var todos = emprestimos.filter(function(e) {
+    var d = new Date(e.vencimento+'T12:00:00');
+    return d.getMonth() === mes && d.getFullYear() === ano;
+  });
+
+  var lista = todos;
+  if (relFiltroAtual === 'ativos') lista = todos.filter(function(e){ return e.ativo; });
+  if (relFiltroAtual === 'quitados') lista = todos.filter(function(e){ return !e.ativo; });
+
+  lista.sort(function(a,b){ return a.vencimento.localeCompare(b.vencimento); });
+
+  var totalRec = lista.reduce(function(s,e){ return s + calcValor(e); }, 0);
+  var totalLuc = lista.reduce(function(s,e){
+    var cap = e.principalOriginal || e.principal;
+    return s + (calcValor(e) - cap);
+  }, 0);
+  var atCount = todos.filter(function(e){ return e.ativo; }).length;
+  var qtCount = todos.filter(function(e){ return !e.ativo; }).length;
+
+  document.getElementById('rel-count').textContent = lista.length;
+  document.getElementById('rel-count-sub').textContent = atCount+' ativo'+(atCount!=1?'s':'')+' · '+qtCount+' quitado'+(qtCount!=1?'s':'');
+  document.getElementById('rel-total').textContent = fmtBRL(totalRec);
+  document.getElementById('rel-lucro').textContent = fmtBRL(totalLuc);
+
+  if (!lista.length) {
+    document.getElementById('rel-lista').innerHTML = '<div class="empty"><div class="empty-i">📋</div>Nenhum empréstimo neste mês.</div>';
+    return;
+  }
+
+  var html = '';
+  lista.forEach(function(e) {
+    var cap = e.principalOriginal || e.principal;
+    var val = calcValor(e);
+    var lucro = val - cap;
+    var dv = diasVencer(e.vencimento);
+    var isAtivo = e.ativo;
+    var corStatus = isAtivo ? 'var(--green)' : 'var(--muted)';
+    var txtStatus = isAtivo ? '● Ativo' : '✓ Quitado';
+    var corBorda = isAtivo ? (dv < 0 ? 'var(--red)' : dv <= 5 ? 'var(--yellow)' : 'var(--border)') : 'var(--border)';
+
+    html += '<div style="margin:0 16px 10px;background:var(--card);border-radius:14px;border:1px solid '+corBorda+';padding:12px 14px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+      +'<div style="font-size:16px;font-weight:700">'+e.cliente+'</div>'
+      +'<span style="font-size:11px;font-weight:700;color:'+corStatus+'">'+txtStatus+'</span>'
+      +'</div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-bottom:8px">📅 '+fmtData(e.vencimento)
+      +(isAtivo && dv === 0 ? ' · <span style="color:var(--yellow)">vence HOJE</span>' : '')
+      +(isAtivo && dv > 0 ? ' · em '+dv+' dia'+(dv!=1?'s':'') : '')
+      +(isAtivo && dv < 0 ? ' · <span style="color:var(--red)">venceu há '+Math.abs(dv)+' dia'+(Math.abs(dv)!=1?'s':'')+'</span>' : '')
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">'
+      +'<div style="background:var(--card2);border-radius:8px;padding:7px 10px"><div style="font-size:10px;color:var(--muted)">Emprestado</div><div style="font-size:13px;font-weight:700">'+fmtBRL(cap)+'</div></div>'
+      +'<div style="background:var(--card2);border-radius:8px;padding:7px 10px"><div style="font-size:10px;color:var(--muted)">A receber</div><div style="font-size:13px;font-weight:700;color:var(--green)">'+fmtBRL(val)+'</div></div>'
+      +'<div style="background:var(--card2);border-radius:8px;padding:7px 10px"><div style="font-size:10px;color:var(--muted)">Lucro</div><div style="font-size:13px;font-weight:700;color:var(--green)">'+fmtBRL(lucro)+'</div></div>'
+      +'</div>'
+      +(e.taxa ? '<div style="font-size:11px;color:var(--muted);margin-top:6px">Taxa: '+e.taxa+'%/mês</div>' : '')
+      +'</div>';
+  });
+  document.getElementById('rel-lista').innerHTML = html;
 }
 
 // ── NOTIFICAÇÕES
