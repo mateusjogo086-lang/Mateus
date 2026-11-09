@@ -265,7 +265,7 @@ input[type="date"]{min-height:44px;color-scheme:dark}
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 16px 0">
       <div class="sc"><div class="sl">⚡ Por Dia</div><div class="sv g" id="cal-pordia">R$ 0</div></div>
       <div class="sc"><div class="sl">📅 Vencimentos</div><div class="sv" id="cal-venc-count" style="color:#3498db">0</div></div>
-      <div class="sc"><div class="sl">💰 Total Mês</div><div class="sv g" id="cal-total-mes">R$ 0</div></div>
+      <div class="sc"><div class="sl">💰 Total Mês</div><div class="sv g" id="cal-total-mes">R$ 0</div><div style="font-size:10px;color:var(--muted);margin-top:2px">Lucro: <span id="cal-lucro-mes" style="color:var(--green)">R$ 0</span></div></div>
     </div>
     <!-- Total acumulado simples -->
     <div style="margin:10px 16px 0;background:linear-gradient(135deg,#0d2818,#152a1e);border-radius:14px;padding:14px;border:1px solid rgba(46,204,113,.2)">
@@ -1464,8 +1464,15 @@ function renderCalendario() {
     if (temHistMes) totalDoMes = ganhoRealMes;
   }
 
+  // Lucro do mês = total a receber - capital dos empréstimos que vencem neste mês
+  var lucroDoMes = eMesPassado && temHistMes
+    ? totalDoMes  // mês passado com histórico: tudo já é lucro (juros acumulados)
+    : vencMes.reduce(function(s,e){ return s + (calcValor(e) - (e.principalOriginal||e.principal)); }, 0);
+
   document.getElementById('cal-venc-count').textContent = vencMes.length;
   document.getElementById('cal-total-mes').textContent = fmtBRL(totalDoMes);
+  var elLucroMes = document.getElementById('cal-lucro-mes');
+  if (elLucroMes) elLucroMes.textContent = fmtBRL(lucroDoMes);
   document.getElementById('cal-mes-total').textContent = vencMes.length+' vencimento'+(vencMes.length!=1?'s':'');
 
   // Total ganho até hoje — calcula direto dos empréstimos
