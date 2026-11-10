@@ -310,12 +310,39 @@ input[type="date"]{min-height:44px;color-scheme:dark}
     </div>
   </div>
   <!-- Totais -->
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:10px 16px 0;flex-shrink:0">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 16px 0;flex-shrink:0">
     <div class="sc"><div class="sl">📋 Total</div><div class="sv" id="rel-count" style="color:#3498db">0</div><div style="font-size:10px;color:var(--muted);margin-top:2px" id="rel-count-sub">empréstimos</div></div>
+    <div class="sc"><div class="sl">🏦 Capital</div><div class="sv" id="rel-capital" style="color:#3498db">R$ 0</div><div style="font-size:10px;color:var(--muted);margin-top:2px">emprestado</div></div>
     <div class="sc"><div class="sl">💰 A receber</div><div class="sv g" id="rel-total">R$ 0</div></div>
     <div class="sc"><div class="sl">💸 Lucro</div><div class="sv g" id="rel-lucro">R$ 0</div></div>
   </div>
   <div class="scroll-area" style="padding-top:8px">
+    <!-- Gráficos -->
+    <div id="rel-graficos" style="display:none;padding:0 16px 4px">
+      <!-- Pizza + Medidor lado a lado -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <!-- Pizza -->
+        <div class="sc" style="padding:12px;text-align:center">
+          <div class="sl" style="margin-bottom:8px">🥧 Capital vs Lucro</div>
+          <canvas id="rel-pizza" width="130" height="130" style="display:block;margin:0 auto"></canvas>
+          <div id="rel-pizza-leg" style="margin-top:8px;font-size:10px;color:var(--muted)"></div>
+        </div>
+        <!-- Medidor -->
+        <div class="sc" style="padding:12px;text-align:center">
+          <div class="sl" style="margin-bottom:8px">🎯 Retorno mês</div>
+          <canvas id="rel-medidor" width="130" height="80" style="display:block;margin:0 auto"></canvas>
+          <div id="rel-medidor-pct" style="font-size:20px;font-weight:700;color:var(--green);margin-top:4px">0%</div>
+          <div style="font-size:10px;color:var(--muted)">sobre capital</div>
+        </div>
+      </div>
+      <!-- Barras -->
+      <div class="sc" style="padding:12px;margin-bottom:8px">
+        <div class="sl" style="margin-bottom:8px">📊 Capital vs Lucro por empréstimo</div>
+        <div style="overflow-x:auto">
+          <canvas id="rel-barras" height="140" style="display:block;min-width:100%"></canvas>
+        </div>
+      </div>
+    </div>
     <div id="rel-lista"></div>
   </div>
 </div>
@@ -1723,11 +1750,16 @@ function renderRelatorio() {
     var cap = e.principalOriginal || e.capital || e.principal;
     return s + cap * e.taxa / 100;
   }, 0);
+  var totalCap = lista.reduce(function(s,e){
+    var cap = e.principalOriginal || e.capital || e.principal;
+    return s + Number(cap);
+  }, 0);
   var atCount = todos.filter(function(e){ return e.ativo; }).length;
   var qtCount = todos.filter(function(e){ return !e.ativo; }).length;
 
   document.getElementById('rel-count').textContent = lista.length;
   document.getElementById('rel-count-sub').textContent = atCount+' ativo'+(atCount!=1?'s':'')+' · '+qtCount+' quitado'+(qtCount!=1?'s':'');
+  document.getElementById('rel-capital').textContent = fmtBRL(totalCap);
   document.getElementById('rel-total').textContent = fmtBRL(totalRec);
   document.getElementById('rel-lucro').textContent = fmtBRL(totalLuc);
 
@@ -1766,6 +1798,120 @@ function renderRelatorio() {
       +'</div>';
   });
   document.getElementById('rel-lista').innerHTML = html;
+
+  // Mostrar gráficos
+  document.getElementById('rel-graficos').style.display = '';
+  setTimeout(function(){ renderGraficosRel(lista, totalCap, totalLuc); }, 60);
+}
+
+function renderGraficosRel(lista, totalCap, totalLuc) {
+  var isDark = true;
+  var green = '#2ecc71';
+  var blue  = '#3498db';
+  var gray  = '#30363d';
+  var text  = '#e6edf3';
+
+  // ── PIZZA ──
+  var pz = document.getElementById('rel-pizza');
+  if (pz) {
+    var ctx = pz.getContext('2d');
+    var W = pz.width, H = pz.height, cx = W/2, cy = H/2, r = Math.min(W,H)/2 - 8;
+    ctx.clearRect(0,0,W,H);
+    var total = totalCap + totalLuc;
+    if (total > 0) {
+      var slices = [{v:totalCap, c:blue}, {v:totalLuc, c:green}];
+      var start = -Math.PI/2;
+      slices.forEach(function(s){
+        var ang = (s.v/total) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(cx,cy);
+        ctx.arc(cx,cy,r,start,start+ang);
+        ctx.closePath();
+        ctx.fillStyle = s.c;
+        ctx.fill();
+        start += ang;
+      });
+      // buraco
+      ctx.beginPath(); ctx.arc(cx,cy,r*0.5,0,Math.PI*2);
+      ctx.fillStyle = '#161b22'; ctx.fill();
+    }
+    var leg = document.getElementById('rel-pizza-leg');
+    if (leg) {
+      var pLuc = total > 0 ? (totalLuc/total*100).toFixed(1) : 0;
+      leg.innerHTML = '<span style="color:'+blue+'">■</span> Capital &nbsp;<span style="color:'+green+'">■</span> Lucro ('+pLuc+'%)';
+    }
+  }
+
+  // ── MEDIDOR ──
+  var md = document.getElementById('rel-medidor');
+  if (md) {
+    var ctx2 = md.getContext('2d');
+    var W2 = md.width, H2 = md.height;
+    ctx2.clearRect(0,0,W2,H2);
+    var cx2 = W2/2, cy2 = H2 - 10, rad = Math.min(W2,H2*2)/2 - 10;
+    // fundo
+    ctx2.beginPath(); ctx2.arc(cx2,cy2,rad,Math.PI,0); ctx2.lineWidth=14; ctx2.strokeStyle=gray; ctx2.stroke();
+    // fill
+    var pct = totalCap > 0 ? Math.min(totalLuc/totalCap, 1) : 0;
+    var angFim = Math.PI + pct * Math.PI;
+    var grd = ctx2.createLinearGradient(cx2-rad,cy2,cx2+rad,cy2);
+    grd.addColorStop(0,'#e74c3c'); grd.addColorStop(0.5,'#f39c12'); grd.addColorStop(1,'#2ecc71');
+    ctx2.beginPath(); ctx2.arc(cx2,cy2,rad,Math.PI,angFim); ctx2.lineWidth=14; ctx2.strokeStyle=grd; ctx2.lineCap='round'; ctx2.stroke();
+    // agulha
+    var angA = Math.PI + pct*Math.PI;
+    ctx2.beginPath();
+    ctx2.moveTo(cx2,cy2);
+    ctx2.lineTo(cx2+Math.cos(angA)*(rad-10), cy2+Math.sin(angA)*(rad-10));
+    ctx2.lineWidth=2; ctx2.strokeStyle=text; ctx2.stroke();
+    ctx2.beginPath(); ctx2.arc(cx2,cy2,5,0,Math.PI*2); ctx2.fillStyle=text; ctx2.fill();
+    var el = document.getElementById('rel-medidor-pct');
+    if (el) el.textContent = (pct*100).toFixed(1)+'%';
+  }
+
+  // ── BARRAS ──
+  var br = document.getElementById('rel-barras');
+  if (br && lista.length) {
+    var n = Math.min(lista.length, 20);
+    var barW = 32, gap = 6, padL = 8, padR = 8;
+    var totalW = padL + n*(barW+gap) + padR;
+    br.width = Math.max(totalW, br.parentElement.clientWidth || 300);
+    var ctx3 = br.getContext('2d');
+    var W3 = br.width, H3 = br.height;
+    ctx3.clearRect(0,0,W3,H3);
+    var maxVal = 0;
+    lista.slice(0,n).forEach(function(e){
+      var cap = Number(e.principalOriginal||e.capital||e.principal);
+      var luc = cap * e.taxa / 100;
+      if (cap+luc > maxVal) maxVal = cap+luc;
+    });
+    var padTop = 10, padBot = 24;
+    var chartH = H3 - padTop - padBot;
+    lista.slice(0,n).forEach(function(e, i){
+      var cap = Number(e.principalOriginal||e.capital||e.principal);
+      var luc = cap * e.taxa / 100;
+      var x = padL + i*(barW+gap);
+      // capital
+      var hC = maxVal>0 ? (cap/maxVal)*chartH : 0;
+      var hL = maxVal>0 ? (luc/maxVal)*chartH : 0;
+      var y = padTop + chartH;
+      ctx3.fillStyle = blue;
+      ctx3.fillRect(x, y - hC - hL, barW, hC);
+      ctx3.fillStyle = green;
+      ctx3.fillRect(x, y - hL, barW, hL);
+      // nome (inicial)
+      ctx3.fillStyle = text;
+      ctx3.font = '9px -apple-system,sans-serif';
+      ctx3.textAlign = 'center';
+      var nm = (e.cliente||'?').substring(0,3);
+      ctx3.fillText(nm, x+barW/2, H3-6);
+    });
+    // legenda
+    ctx3.fillStyle = blue; ctx3.fillRect(padL,4,10,8);
+    ctx3.fillStyle = text; ctx3.font='9px sans-serif'; ctx3.textAlign='left';
+    ctx3.fillText('Capital', padL+13, 12);
+    ctx3.fillStyle = green; ctx3.fillRect(padL+65,4,10,8);
+    ctx3.fillStyle = text; ctx3.fillText('Lucro', padL+78, 12);
+  }
 }
 
 // ── NOTIFICAÇÕES
