@@ -225,6 +225,7 @@ input[type="date"]{min-height:44px;color-scheme:dark}
         </div>
       </div>
       <div id="parcelas-preview-box" class="fg hidden"><div class="pp"><div class="ppt">📋 Resumo das parcelas</div><div id="parcelas-preview-lista"></div></div></div>
+      <div class="fg"><label class="fl">📝 Observação (opcional)</label><input type="text" id="f-obs" placeholder="Ex: combinou pagar na sexta, garantia..."></div>
       <button class="btn-save" onclick="salvarEmprestimo()">Salvar Empréstimo</button>
     </div>
   </div>
@@ -691,7 +692,8 @@ function renderAtivos() {
         +'<div class="'+dueClass+'" style="margin:0 14px 8px">'+dueTxt+'</div>'
         +obsHtml+estornoHtml+valorBoxHtml+valorFinalHtml
         +'<div class="li"><div><div class="il">Emprestado</div><div class="iv">'+fmtBRL(e.principalOriginal||e.principal)+'</div></div><div><div class="il">Já Pago</div><div class="iv" style="color:'+(e.pago>0?'var(--green)':'var(--text)')+'">'+fmtBRL(e.pago||0)+'</div></div><div><div class="il">Taxa</div><div class="iv">'+e.taxa+'%/mês</div></div></div>'
-        +'<div class="la"><button class="btn bg" onclick="pagarLoan('+e.id+')">💳 Pagar</button><button class="btn bd" onclick="abrirObs('+e.id+')">📝 Obs</button><button class="btn bd" onclick="editarLoan('+e.id+')">✏️ Editar</button><button class="btn br" onclick="deletarLoan('+e.id+')">🗑️ Deletar</button></div>'
+        +'<div class="la"><button class="btn bg" onclick="pagarLoan('+e.id+')">💳 Pagar</button><button class="btn bd" onclick="renovarLoan('+e.id+')" style="background:rgba(52,152,219,.15);border-color:rgba(52,152,219,.4);color:#3498db">🔄 Renovar</button></div>'
+        +'<div class="la"><button class="btn bd" onclick="abrirObs('+e.id+')">📝 Obs</button><button class="btn bd" onclick="editarLoan('+e.id+')">✏️ Editar</button><button class="btn br" onclick="deletarLoan('+e.id+')">🗑️ Deletar</button></div>'
         +'</div>';
     });
 
@@ -732,6 +734,42 @@ function pagarLoan(id) {
   document.getElementById('pag-outros-lista').innerHTML = '';
   document.getElementById('modal-pagar').classList.add('open');
   setTimeout(function(){document.getElementById('pag-valor').focus();},100);
+}
+
+function renovarLoan(id) {
+  var e = emprestimos.find(function(x){return x.id===id;});
+  if (!e) return;
+  var cap = e.principalOriginal || e.principal;
+  var juros = cap * e.taxa / 100;
+  var novaVenc = e.vencimento;
+  // Avança 1 mês
+  var partes = novaVenc.split('-');
+  var ano = parseInt(partes[0]), mes = parseInt(partes[1])-1, dia = parseInt(partes[2]);
+  var d = new Date(ano, mes+1, dia);
+  // Se o dia não existe no próximo mês (ex: 31 em fevereiro), usa último dia
+  if (d.getMonth() !== ((mes+1)%12)) { d = new Date(ano, mes+2, 0); }
+  var novaData = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+
+  var msg = '🔄 Renovar empréstimo de '+e.cliente+'?\n\n'
+    +'• Juros de '+fmtBRL(juros)+' serão registrados como recebidos\n'
+    +'• Capital R$ '+fmtBRL(cap)+' continua ativo\n'
+    +'• Novo vencimento: '+fmtData(novaData);
+
+  if (!confirm(msg)) return;
+
+  // Snapshot para eventual estorno
+  e.snapshot = {principal:e.principal, pago:e.pago||0, inicio:e.inicio, vencimento:e.vencimento, ativo:e.ativo};
+  // Registra juros como pagos parcialmente
+  e.pago = (e.pago||0) + juros;
+  // Mantém capital original e restaura vencimento para próximo mês
+  e.inicio = e.vencimento; // início do novo ciclo = vencimento anterior
+  e.vencimento = novaData;
+  // Remove snapshot do campo pago pra não confundir estorno
+  // Mantém ativo
+  e.ativo = true;
+
+  salvar(); renderAtivos(); renderQuitados();
+  alert('✅ Renovado! Juros de '+fmtBRL(juros)+' registrados.\nNovo vencimento: '+fmtData(novaData));
 }
 
 function calcPagamentoResto() {
@@ -1180,11 +1218,12 @@ function salvarEmprestimo() {
   var tax=parseFloat(document.getElementById('f-taxa').value);
   var ini=document.getElementById('f-inicio').value;
   var on=document.getElementById('toggle-parcelas').checked;
+  var obsNovo = document.getElementById('f-obs') ? document.getElementById('f-obs').value.trim() : '';
   if(!cli||!val||!tax||!ini){alert('Preencha todos os campos.');return;}
   if(!on) {
     var venc=document.getElementById('f-vencimento').value;
     if(!venc){alert('Informe a data de vencimento.');return;}
-    emprestimos.push({id:nextId++,cliente:cli,principal:val,principalOriginal:val,taxa:tax,inicio:ini,vencimento:venc,pago:0,ativo:true,obs:''});
+    emprestimos.push({id:nextId++,cliente:cli,principal:val,principalOriginal:val,taxa:tax,inicio:ini,vencimento:venc,pago:0,ativo:true,obs:obsNovo});
   } else {
     var np=parseInt(document.getElementById('f-parcelas').value);
     if(!np||np<2){alert('Informe ao menos 2 parcelas.');return;}
@@ -1211,7 +1250,7 @@ function salvarEmprestimo() {
         capitalGrupo:val,
         grupoId:grupoBase,
         pago:0,ativo:true,
-        obs:bullet?(isU?'🏁 Juros + Capital':'📅 Só Juros'):'Parcela '+(p+1)+'/'+np
+        obs:(obsNovo?obsNovo+' · ':'')+(bullet?(isU?'🏁 Juros + Capital':'📅 Só Juros'):'Parcela '+(p+1)+'/'+np)
       });
     }
   }
